@@ -16,6 +16,66 @@ let currentImportType = null;
 let importPreviewData = null;
 
 // ========================================
+// Utility Functions
+// ========================================
+
+/**
+ * Convert date from YYYY-MM-DD to DD-MM-YYYY format
+ * @param {string|Date|number} dateString - Date in various formats
+ * @returns {string} - Date in DD-MM-YYYY format
+ */
+function convertDateFormat(dateString) {
+    if (!dateString) return dateString;
+    
+    // Handle Date objects
+    if (dateString instanceof Date) {
+        const day = String(dateString.getDate()).padStart(2, '0');
+        const month = String(dateString.getMonth() + 1).padStart(2, '0');
+        const year = dateString.getFullYear();
+        return `${day}-${month}-${year}`;
+    }
+    
+    // Handle Excel numeric dates (days since 1900-01-01)
+    if (typeof dateString === 'number') {
+        const excelEpoch = new Date(1900, 0, 1);
+        const date = new Date(excelEpoch.getTime() + (dateString - 1) * 24 * 60 * 60 * 1000);
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+        return `${day}-${month}-${year}`;
+    }
+    
+    // Convert to string if not already
+    const dateStr = String(dateString);
+    
+    // Check if date is already in DD-MM-YYYY format
+    if (dateStr.match(/^\d{2}-\d{2}-\d{4}$/)) {
+        return dateStr;
+    }
+    
+    // Convert from YYYY-MM-DD to DD-MM-YYYY
+    if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        const [year, month, day] = dateStr.split('-');
+        return `${day}-${month}-${year}`;
+    }
+    
+    // Try to parse as Date and format
+    try {
+        const date = new Date(dateStr);
+        if (!isNaN(date.getTime())) {
+            const day = String(date.getDate()).padStart(2, '0');
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const year = date.getFullYear();
+            return `${day}-${month}-${year}`;
+        }
+    } catch (e) {
+        console.warn('Could not parse date:', dateStr);
+    }
+    
+    return dateStr;
+}
+
+// ========================================
 // Data Loading Functions
 // ========================================
 
@@ -210,16 +270,28 @@ function renderEmployeeTable() {
     if (!tbody) return;
     
     if (Object.keys(employees).length === 0) {
-        tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; padding: 20px; color: #666;">No employees found. Click "Add New Employee" to get started.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 20px; color: #666;">No employees found. Click "Add New Employee" to get started.</td></tr>';
         return;
     }
     
     let html = '';
     Object.values(employees).forEach(employee => {
+        // Format the created_at date
+        let entryDate = 'N/A';
+        if (employee.created_at) {
+            const date = new Date(employee.created_at);
+            entryDate = date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: '2-digit'
+            });
+        }
+        
         html += `
             <tr>
                 <td>${employee.id}</td>
                 <td>${employee.name}</td>
+                <td>${entryDate}</td>
                 <td>
                     <button class="view-btn" onclick="viewRecord('employee', '${employee.id}')">View</button>
                     <button class="edit-btn" onclick="editRecord('employee', '${employee.id}')">Edit</button>
@@ -242,12 +314,23 @@ function renderBorrowerTable() {
     if (!tbody) return;
     
     if (Object.keys(borrowers).length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 20px; color: #666;">No borrowers found. Click "Add New Borrower" to get started.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 20px; color: #666;">No borrowers found. Click "Add New Borrower" to get started.</td></tr>';
         return;
     }
     
     let html = '';
     Object.values(borrowers).forEach(borrower => {
+        // Format the created_at date for entry date
+        let entryDate = 'N/A';
+        if (borrower.created_at) {
+            const date = new Date(borrower.created_at);
+            entryDate = date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: '2-digit'
+            });
+        }
+        
         html += `
             <tr>
                 <td>${borrower.empId}</td>
@@ -255,7 +338,8 @@ function renderBorrowerTable() {
                 <td>₹${borrower.amount}</td>
                 <td>₹${borrower.emi}</td>
                 <td>${borrower.month}</td>
-                <td>${borrower.disbursedDate}</td>
+                <td>${convertDateFormat(borrower.disbursedDate)}</td>
+                <td>${entryDate}</td>
                 <td>
                     <button class="view-btn" onclick="viewRecord('borrower', '${borrower.empId}')">View</button>
                     <button class="edit-btn" onclick="editRecord('borrower', '${borrower.empId}')">Edit</button>
@@ -289,7 +373,7 @@ function renderVoucherTable() {
                 <td>${voucher.id}</td>
                 <td>${voucher.empId}</td>
                 <td>${voucher.empName}</td>
-                <td>${voucher.date}</td>
+                <td>${convertDateFormat(voucher.date)}</td>
                 <td>₹${voucher.amount}</td>
                 <td>${voucher.month}</td>
                 <td>
@@ -581,7 +665,7 @@ function viewRecord(type, id) {
                     <div class="detail-row"><strong>Advance Amount:</strong> ₹${record.amount}</div>
                     <div class="detail-row"><strong>EMI:</strong> ₹${record.emi}</div>
                     <div class="detail-row"><strong>Month:</strong> ${record.month}</div>
-                    <div class="detail-row"><strong>Disbursed Date:</strong> ${record.disbursedDate}</div>
+                    <div class="detail-row"><strong>Disbursed Date:</strong> ${convertDateFormat(record.disbursedDate)}</div>
                 </div>
             `;
             break;
@@ -591,7 +675,7 @@ function viewRecord(type, id) {
                     <div class="detail-row"><strong>Voucher No:</strong> ${record.id}</div>
                     <div class="detail-row"><strong>Employee ID:</strong> ${record.empId}</div>
                     <div class="detail-row"><strong>Employee Name:</strong> ${record.empName}</div>
-                    <div class="detail-row"><strong>Voucher Date:</strong> ${record.date}</div>
+                    <div class="detail-row"><strong>Voucher Date:</strong> ${convertDateFormat(record.date)}</div>
                     <div class="detail-row"><strong>Amount:</strong> ₹${record.amount}</div>
                     <div class="detail-row"><strong>Month:</strong> ${record.month}</div>
                 </div>
@@ -748,11 +832,11 @@ function addRecord(type) {
             formFields = `
                 <div class="form-group">
                     <label>Employee ID:</label>
-                    <input type="text" name="empId" required placeholder="EMP001">
+                    <input type="text" id="borrower-empId" name="empId" required placeholder="EMP001">
                 </div>
                 <div class="form-group">
                     <label>Name:</label>
-                    <input type="text" name="name" required placeholder="Enter employee name">
+                    <input type="text" id="borrower-name" name="name" required placeholder="Enter employee name">
                 </div>
                 <div class="form-group">
                     <label>Advance Amount:</label>
@@ -782,11 +866,11 @@ function addRecord(type) {
                 </div>
                 <div class="form-group">
                     <label>Employee ID:</label>
-                    <input type="text" name="empId" required placeholder="EMP001">
+                    <input type="text" id="voucher-empId" name="empId" required placeholder="EMP001">
                 </div>
                 <div class="form-group">
                     <label>Employee Name:</label>
-                    <input type="text" name="empName" required placeholder="Enter employee name">
+                    <input type="text" id="voucher-empName" name="empName" required placeholder="Enter employee name">
                 </div>
                 <div class="form-group">
                     <label>Voucher Date:</label>
@@ -831,9 +915,38 @@ function addRecord(type) {
         // Add event listeners for borrower form
         if (type === 'borrower') {
             setTimeout(() => {
+                const empIdInput = document.getElementById('borrower-empId');
+                const nameInput = document.getElementById('borrower-name');
                 const amountInput = document.querySelector('input[name="amount"]');
                 const emiInput = document.querySelector('input[name="emi"]');
                 const monthInput = document.querySelector('input[name="month"]');
+                
+                // Auto-fill employee name when Employee ID is entered
+                if (empIdInput && nameInput) {
+                    empIdInput.addEventListener('input', function() {
+                        const empId = this.value.trim();
+                        if (empId && data.employees && data.employees[empId]) {
+                            nameInput.value = data.employees[empId].name;
+                            nameInput.style.backgroundColor = '#e8f5e8'; // Light green to show auto-filled
+                        } else {
+                            nameInput.value = '';
+                            nameInput.style.backgroundColor = '';
+                        }
+                    });
+                    
+                    // Also trigger on blur for better UX
+                    empIdInput.addEventListener('blur', function() {
+                        const empId = this.value.trim();
+                        if (empId && data.employees && data.employees[empId]) {
+                            nameInput.value = data.employees[empId].name;
+                            nameInput.style.backgroundColor = '#e8f5e8';
+                        } else if (empId && (!data.employees || !data.employees[empId])) {
+                            nameInput.value = '';
+                            nameInput.style.backgroundColor = '#ffe8e8'; // Light red for invalid ID
+                            nameInput.placeholder = 'Employee ID not found';
+                        }
+                    });
+                }
                 
                 // Auto-calculate EMI based on amount and month
                 function calculateEMI() {
@@ -864,6 +977,41 @@ function addRecord(type) {
                     
                     // Calculate month when EMI changes (as backup)
                     emiInput.addEventListener('input', calculateMonth);
+                }
+            }, 100);
+        }
+        
+        // Add event listeners for voucher form
+        if (type === 'voucher') {
+            setTimeout(() => {
+                const empIdInput = document.getElementById('voucher-empId');
+                const empNameInput = document.getElementById('voucher-empName');
+                
+                // Auto-fill employee name when Employee ID is entered
+                if (empIdInput && empNameInput) {
+                    empIdInput.addEventListener('input', function() {
+                        const empId = this.value.trim();
+                        if (empId && data.employees && data.employees[empId]) {
+                            empNameInput.value = data.employees[empId].name;
+                            empNameInput.style.backgroundColor = '#e8f5e8'; // Light green to show auto-filled
+                        } else {
+                            empNameInput.value = '';
+                            empNameInput.style.backgroundColor = '';
+                        }
+                    });
+                    
+                    // Also trigger on blur for better UX
+                    empIdInput.addEventListener('blur', function() {
+                        const empId = this.value.trim();
+                        if (empId && data.employees && data.employees[empId]) {
+                            empNameInput.value = data.employees[empId].name;
+                            empNameInput.style.backgroundColor = '#e8f5e8';
+                        } else if (empId && (!data.employees || !data.employees[empId])) {
+                            empNameInput.value = '';
+                            empNameInput.style.backgroundColor = '#ffe8e8'; // Light red for invalid ID
+                            empNameInput.placeholder = 'Employee ID not found';
+                        }
+                    });
                 }
             }, 100);
         }
@@ -1072,7 +1220,7 @@ function downloadTemplate() {
                 amount: 1000,
                 month: 5,
                 emi: 200,
-                disbursedDate: '2025-08-01'
+                disbursedDate: '01-08-2025'
             }];
             break;
         case 'voucher':
@@ -1080,7 +1228,7 @@ function downloadTemplate() {
                 id: 'VCH-001',
                 empId: 'EMP001',
                 empName: 'John Doe',
-                date: '2025-08-05',
+                date: '05-08-2025',
                 amount: 1000,
                 month: 'January'
             }];
@@ -1250,6 +1398,11 @@ function validateBorrowerData(data) {
         if (row.hasOwnProperty('Emi')) row.emi = row.Emi;
         if (row.hasOwnProperty('Disbursed Date')) row.disbursedDate = row['Disbursed Date'];
         if (row.hasOwnProperty('disbursed_date')) row.disbursedDate = row.disbursed_date;
+        
+        // Convert disbursed date format from YYYY-MM-DD to DD-MM-YYYY
+        if (row.disbursedDate) {
+            row.disbursedDate = convertDateFormat(row.disbursedDate);
+        }
     });
 }
 
@@ -1300,6 +1453,11 @@ function validateVoucherData(data) {
         if (row.hasOwnProperty('Amount')) row.amount = row.Amount;
         if (row.hasOwnProperty('Month')) row.month = row.Month;
         if (row.hasOwnProperty('MONTH')) row.month = row.MONTH;
+        
+        // Convert voucher date format from YYYY-MM-DD to DD-MM-YYYY
+        if (row.date) {
+            row.date = convertDateFormat(row.date);
+        }
     });
 }
 
@@ -1349,114 +1507,242 @@ function displayPreview(data) {
 function confirmImport() {
     if (!importPreviewData || !currentImportType) return;
     
-    try {
-        importPreviewData.forEach(record => {
-            // For borrowers, use empId as the key and don't generate a separate ID
-            let recordKey;
-            if (currentImportType === 'borrower') {
-                recordKey = record.empId;
-                
-                // Validate required fields for borrowers
-                if (!record.name || record.name.trim() === '') {
-                    throw new Error(`Borrower with Employee ID ${record.empId} is missing a name.`);
-                }
-                if (!record.amount || isNaN(record.amount)) {
-                    throw new Error(`Borrower with Employee ID ${record.empId} has invalid advance amount.`);
-                }
-                if (!record.month || isNaN(record.month)) {
-                    throw new Error(`Borrower with Employee ID ${record.empId} has invalid month.`);
-                }
-                if (!record.emi || isNaN(record.emi)) {
-                    throw new Error(`Borrower with Employee ID ${record.empId} has invalid EMI.`);
-                }
-                if (!record.disbursedDate) {
-                    throw new Error(`Borrower with Employee ID ${record.empId} is missing disbursed date.`);
-                }
-            } else if (currentImportType === 'voucher') {
-                recordKey = record.id;
-                
-                // Validate required fields for vouchers
-                if (!record.empId || record.empId.trim() === '') {
-                    throw new Error(`Voucher ${record.id} is missing Employee ID.`);
-                }
-                if (!record.empName || record.empName.trim() === '') {
-                    throw new Error(`Voucher ${record.id} is missing Employee Name.`);
-                }
-                if (!record.date) {
-                    throw new Error(`Voucher ${record.id} is missing voucher date.`);
-                }
-                if (!record.amount || isNaN(record.amount)) {
-                    throw new Error(`Voucher ${record.id} has invalid amount.`);
-                }
-                if (!record.month || record.month.trim() === '') {
-                    throw new Error(`Voucher ${record.id} has invalid month.`);
-                }
-            } else {
-                // Generate ID if not provided for other types
-                if (!record.id) {
-                    const prefix = currentImportType === 'employee' ? 'EMP' : 'VCH';
-                    const count = Object.keys(data[currentImportType + 's']).length + 1;
-                    record.id = `${prefix}${String(count).padStart(3, '0')}`;
-                }
-                recordKey = record.id;
-                
-                // Validate required fields for employees
-                if (currentImportType === 'employee') {
-                    if (!record.name || record.name.trim() === '') {
-                        throw new Error(`Employee ${record.id} is missing a name.`);
-                    }
-                }
-            }
-            
-            // Convert numeric fields
-            if (currentImportType === 'employee') {
-                // For employees, we only keep id and name - no numeric fields needed
-                const cleanRecord = {
-                    id: record.id,
-                    name: record.name.trim()
-                };
-                record = cleanRecord;
-            } else if (currentImportType === 'borrower') {
-                // For borrowers, clean and convert the record
-                const cleanRecord = {
-                    empId: record.empId,
-                    name: record.name.trim(),
-                    amount: Number(record.amount),
-                    month: Number(record.month),
-                    emi: Number(record.emi),
-                    disbursedDate: record.disbursedDate
-                };
-                record = cleanRecord;
-            } else if (currentImportType === 'voucher') {
-                // For vouchers, clean and convert the record
-                const cleanRecord = {
-                    id: record.id,
-                    empId: record.empId.trim(),
-                    empName: record.empName.trim(),
-                    date: record.date,
-                    amount: Number(record.amount),
-                    month: record.month.trim()
-                };
-                record = cleanRecord;
-            }
-            
-            data[currentImportType + 's'][recordKey] = record;
-        });
-        
-        showNotification(`${importPreviewData.length} ${currentImportType}(s) imported successfully from Excel!`, 'success');
-        closeModal('importModal');
-        
-        // Refresh the appropriate table
-        if (currentImportType === 'employee') {
-            renderEmployeeTable();
-        } else if (currentImportType === 'borrower') {
-            renderBorrowerTable();
-        } else if (currentImportType === 'voucher') {
-            renderVoucherTable();
-        }
-    } catch (error) {
-        alert('Error importing data: ' + error.message);
+    // Send all data types to server API for database import
+    if (currentImportType === 'employee') {
+        importEmployeesToDatabase();
+        return;
+    } else if (currentImportType === 'borrower') {
+        importBorrowersToDatabase();
+        return;
+    } else if (currentImportType === 'voucher') {
+        importVouchersToDatabase();
+        return;
     }
+    
+    // Fallback for any other types (should not happen)
+    alert('Import not supported for this data type');
+}
+
+/**
+ * Import employees to database via API
+ */
+function importEmployeesToDatabase() {
+    if (!importPreviewData || importPreviewData.length === 0) {
+        alert('No employee data to import');
+        return;
+    }
+    
+    // Prepare employee data
+    const employees = importPreviewData.map(employee => ({
+        id: employee.id,
+        name: employee.name
+    }));
+    
+    // Show loading state
+    const confirmBtn = document.getElementById('confirmImportBtn');
+    const originalText = confirmBtn.textContent;
+    confirmBtn.textContent = 'Importing...';
+    confirmBtn.disabled = true;
+    
+    // Send to server
+    fetch('api.php?action=import_employees', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        credentials: 'same-origin',
+        body: JSON.stringify({ employees: employees })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(result => {
+        if (result.success) {
+            showNotification(result.message, 'success');
+            
+            if (result.data && result.data.errors && result.data.errors.length > 0) {
+                console.warn('Import warnings:', result.data.errors);
+                // Show detailed error information if needed
+                const errorMessage = result.data.errors.slice(0, 5).join('\n');
+                if (result.data.errors.length > 5) {
+                    errorMessage += `\n... and ${result.data.errors.length - 5} more errors`;
+                }
+                setTimeout(() => {
+                    alert('Some records had issues:\n' + errorMessage);
+                }, 1000);
+            }
+            
+            closeModal('importModal');
+            
+            // Refresh employee table and dashboard stats
+            renderEmployeeTable();
+            loadDashboardStats();
+        } else {
+            showNotification(result.message || 'Error importing employees', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Import error:', error);
+        showNotification('Network error occurred during import', 'error');
+    })
+    .finally(() => {
+        // Restore button state
+        confirmBtn.textContent = originalText;
+        confirmBtn.disabled = false;
+    });
+}
+
+/**
+ * Import borrowers to database via API
+ */
+function importBorrowersToDatabase() {
+    if (!importPreviewData || importPreviewData.length === 0) {
+        alert('No borrower data to import');
+        return;
+    }
+    
+    // Prepare borrower data
+    const borrowers = importPreviewData.map(borrower => ({
+        empId: borrower.empId,
+        name: borrower.name,
+        amount: borrower.amount,
+        emi: borrower.emi,
+        month: borrower.month,
+        disbursedDate: borrower.disbursedDate
+    }));
+    
+    // Show loading state
+    const confirmBtn = document.getElementById('confirmImportBtn');
+    const originalText = confirmBtn.textContent;
+    confirmBtn.textContent = 'Importing...';
+    confirmBtn.disabled = true;
+    
+    // Send to server
+    fetch('api.php?action=import_borrowers', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        credentials: 'same-origin',
+        body: JSON.stringify({ borrowers: borrowers })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(result => {
+        if (result.success) {
+            showNotification(result.message, 'success');
+            
+            if (result.data && result.data.errors && result.data.errors.length > 0) {
+                console.warn('Import warnings:', result.data.errors);
+                const errorMessage = result.data.errors.slice(0, 5).join('\n');
+                if (result.data.errors.length > 5) {
+                    errorMessage += `\n... and ${result.data.errors.length - 5} more errors`;
+                }
+                setTimeout(() => {
+                    alert('Some records had issues:\n' + errorMessage);
+                }, 1000);
+            }
+            
+            closeModal('importModal');
+            
+            // Refresh borrower table and dashboard stats
+            renderBorrowerTable();
+            loadDashboardStats();
+        } else {
+            showNotification(result.message || 'Error importing borrowers', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Import error:', error);
+        showNotification('Network error occurred during import', 'error');
+    })
+    .finally(() => {
+        // Restore button state
+        confirmBtn.textContent = originalText;
+        confirmBtn.disabled = false;
+    });
+}
+
+/**
+ * Import vouchers to database via API
+ */
+function importVouchersToDatabase() {
+    if (!importPreviewData || importPreviewData.length === 0) {
+        alert('No voucher data to import');
+        return;
+    }
+    
+    // Prepare voucher data
+    const vouchers = importPreviewData.map(voucher => ({
+        id: voucher.id,
+        empId: voucher.empId,
+        empName: voucher.empName,
+        date: voucher.date,
+        amount: voucher.amount,
+        month: voucher.month
+    }));
+    
+    // Show loading state
+    const confirmBtn = document.getElementById('confirmImportBtn');
+    const originalText = confirmBtn.textContent;
+    confirmBtn.textContent = 'Importing...';
+    confirmBtn.disabled = true;
+    
+    // Send to server
+    fetch('api.php?action=import_vouchers', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        credentials: 'same-origin',
+        body: JSON.stringify({ vouchers: vouchers })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(result => {
+        if (result.success) {
+            showNotification(result.message, 'success');
+            
+            if (result.data && result.data.errors && result.data.errors.length > 0) {
+                console.warn('Import warnings:', result.data.errors);
+                const errorMessage = result.data.errors.slice(0, 5).join('\n');
+                if (result.data.errors.length > 5) {
+                    errorMessage += `\n... and ${result.data.errors.length - 5} more errors`;
+                }
+                setTimeout(() => {
+                    alert('Some records had issues:\n' + errorMessage);
+                }, 1000);
+            }
+            
+            closeModal('importModal');
+            
+            // Refresh voucher table and dashboard stats
+            renderVoucherTable();
+            loadDashboardStats();
+        } else {
+            showNotification(result.message || 'Error importing vouchers', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Import error:', error);
+        showNotification('Network error occurred during import', 'error');
+    })
+    .finally(() => {
+        // Restore button state
+        confirmBtn.textContent = originalText;
+        confirmBtn.disabled = false;
+    });
 }
 
 // ========================================

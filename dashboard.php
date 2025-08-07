@@ -195,6 +195,7 @@ $currentUser = getCurrentUser();
                             <tr>
                                 <th>Employee ID</th>
                                 <th>Employee Name</th>
+                                <th>Entry Date</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -235,12 +236,13 @@ $currentUser = getCurrentUser();
                                 <th>EMI</th>
                                 <th>Month</th>
                                 <th>Disbursed Date</th>
+                                <th>Entry Date</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr>
-                                <td colspan="7" style="text-align: center; padding: 20px; color: #666;">No borrowers found. Click "Add New Borrower" to get started.</td>
+                                <td colspan="8" style="text-align: center; padding: 20px; color: #666;">No borrowers found. Click "Add New Borrower" to get started.</td>
                             </tr>
                         </tbody>
                     </table>

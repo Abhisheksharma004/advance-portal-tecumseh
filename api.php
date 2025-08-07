@@ -16,6 +16,53 @@ ob_start();
 
 require_once 'auth.php';
 
+// Date conversion functions
+function convertDateToDDMMYYYY($dateString) {
+    if (empty($dateString)) return $dateString;
+    
+    // Check if date is already in DD-MM-YYYY format
+    if (preg_match('/^\d{2}-\d{2}-\d{4}$/', $dateString)) {
+        return $dateString;
+    }
+    
+    // Convert from YYYY-MM-DD to DD-MM-YYYY
+    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateString)) {
+        $parts = explode('-', $dateString);
+        return $parts[2] . '-' . $parts[1] . '-' . $parts[0];
+    }
+    
+    // Try to parse as Date and format
+    $timestamp = strtotime($dateString);
+    if ($timestamp !== false) {
+        return date('d-m-Y', $timestamp);
+    }
+    
+    return $dateString;
+}
+
+function convertDateToYYYYMMDD($dateString) {
+    if (empty($dateString)) return $dateString;
+    
+    // Check if date is already in YYYY-MM-DD format
+    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateString)) {
+        return $dateString;
+    }
+    
+    // Convert from DD-MM-YYYY to YYYY-MM-DD
+    if (preg_match('/^\d{2}-\d{2}-\d{4}$/', $dateString)) {
+        $parts = explode('-', $dateString);
+        return $parts[2] . '-' . $parts[1] . '-' . $parts[0];
+    }
+    
+    // Try to parse as Date and format
+    $timestamp = strtotime($dateString);
+    if ($timestamp !== false) {
+        return date('Y-m-d', $timestamp);
+    }
+    
+    return $dateString;
+}
+
 // Clean any unexpected output
 $unexpected_output = ob_get_clean();
 if (!empty($unexpected_output)) {
@@ -98,6 +145,30 @@ try {
             }
             break;
             
+        case 'import_employees':
+            if ($method === 'POST') {
+                importEmployees();
+            } else {
+                sendJsonResponse(false, 'Method not allowed');
+            }
+            break;
+            
+        case 'import_borrowers':
+            if ($method === 'POST') {
+                importBorrowers();
+            } else {
+                sendJsonResponse(false, 'Method not allowed');
+            }
+            break;
+            
+        case 'import_vouchers':
+            if ($method === 'POST') {
+                importVouchers();
+            } else {
+                sendJsonResponse(false, 'Method not allowed');
+            }
+            break;
+            
         case 'delete_employee':
             if ($method === 'POST') {
                 deleteEmployee();
@@ -135,7 +206,7 @@ try {
  */
 function getEmployees() {
     $pdo = getDB();
-    $stmt = $pdo->query("SELECT id, name FROM employees WHERE status = 'active' ORDER BY id");
+    $stmt = $pdo->query("SELECT id, name, created_at FROM employees WHERE status = 'active' ORDER BY id");
     $employees = $stmt->fetchAll();
     
     // Convert to the format expected by the frontend
@@ -143,7 +214,8 @@ function getEmployees() {
     foreach ($employees as $emp) {
         $result[$emp['id']] = [
             'id' => $emp['id'],
-            'name' => $emp['name']
+            'name' => $emp['name'],
+            'created_at' => $emp['created_at']
         ];
     }
     
@@ -167,7 +239,8 @@ function getBorrowers() {
             'amount' => $borrower['amount'],
             'emi' => $borrower['emi'],
             'month' => $borrower['months'],
-            'disbursedDate' => $borrower['disbursed_date']
+            'disbursedDate' => convertDateToDDMMYYYY($borrower['disbursed_date']),
+            'created_at' => $borrower['created_at']
         ];
     }
     
@@ -189,7 +262,7 @@ function getVouchers() {
             'id' => $voucher['id'],
             'empId' => $voucher['emp_id'],
             'empName' => $voucher['emp_name'],
-            'date' => $voucher['voucher_date'],
+            'date' => convertDateToDDMMYYYY($voucher['voucher_date']),
             'amount' => $voucher['amount'],
             'month' => $voucher['month']
         ];
@@ -250,9 +323,15 @@ function addEmployee() {
         $stmt = $pdo->prepare("INSERT INTO employees (id, name) VALUES (?, ?)");
         $stmt->execute([$id, $name]);
         
+        // Get the created_at timestamp
+        $stmt = $pdo->prepare("SELECT created_at FROM employees WHERE id = ?");
+        $stmt->execute([$id]);
+        $createdAt = $stmt->fetchColumn();
+        
         sendJsonResponse(true, 'Employee added successfully', [
             'id' => $id,
-            'name' => $name
+            'name' => $name,
+            'created_at' => $createdAt
         ]);
     } catch(PDOException $e) {
         error_log("Add employee error: " . $e->getMessage());
@@ -277,7 +356,7 @@ function addBorrower() {
     $amount = floatval($_POST['amount']);
     $emi = floatval($_POST['emi']);
     $months = intval($_POST['month']);
-    $disbursedDate = $_POST['disbursedDate'];
+    $disbursedDate = convertDateToYYYYMMDD($_POST['disbursedDate']);
     
     try {
         // Check if employee exists
@@ -300,13 +379,19 @@ function addBorrower() {
         $stmt = $pdo->prepare("INSERT INTO borrowers (emp_id, name, amount, emi, months, disbursed_date) VALUES (?, ?, ?, ?, ?, ?)");
         $stmt->execute([$empId, $name, $amount, $emi, $months, $disbursedDate]);
         
+        // Get the created_at timestamp
+        $stmt = $pdo->prepare("SELECT created_at FROM borrowers WHERE emp_id = ? AND status = 'active'");
+        $stmt->execute([$empId]);
+        $createdAt = $stmt->fetchColumn();
+        
         sendJsonResponse(true, 'Borrower added successfully', [
             'empId' => $empId,
             'name' => $name,
             'amount' => $amount,
             'emi' => $emi,
             'month' => $months,
-            'disbursedDate' => $disbursedDate
+            'disbursedDate' => convertDateToDDMMYYYY($disbursedDate),
+            'created_at' => $createdAt
         ]);
     } catch(PDOException $e) {
         error_log("Add borrower error: " . $e->getMessage());
@@ -330,7 +415,7 @@ function addVoucher() {
     $empId = trim($_POST['empId']);
     $empName = trim($_POST['empName']);
     $amount = floatval($_POST['amount']);
-    $date = $_POST['date'];
+    $date = convertDateToYYYYMMDD($_POST['date']);
     $month = trim($_POST['month']);
     
     try {
@@ -405,7 +490,7 @@ function updateBorrower() {
     $amount = floatval($_POST['amount']);
     $emi = floatval($_POST['emi']);
     $months = intval($_POST['month']);
-    $disbursedDate = $_POST['disbursedDate'];
+    $disbursedDate = convertDateToYYYYMMDD($_POST['disbursedDate']);
     
     try {
         $stmt = $pdo->prepare("UPDATE borrowers SET name = ?, amount = ?, emi = ?, months = ?, disbursed_date = ? WHERE emp_id = ? AND status = 'active'");
@@ -437,7 +522,7 @@ function updateVoucher() {
     $empId = trim($_POST['empId']);
     $empName = trim($_POST['empName']);
     $amount = floatval($_POST['amount']);
-    $date = $_POST['date'];
+    $date = convertDateToYYYYMMDD($_POST['date']);
     $month = trim($_POST['month']);
     
     try {
@@ -570,5 +655,261 @@ function sendJsonResponse($success, $message, $data = null) {
     }
     
     exit;
+}
+
+/**
+ * Import multiple employees from Excel data
+ */
+function importEmployees() {
+    $pdo = getDB();
+    
+    // Get JSON data from POST body
+    $input = file_get_contents('php://input');
+    $data = json_decode($input, true);
+    
+    if (!$data || !isset($data['employees']) || !is_array($data['employees'])) {
+        sendJsonResponse(false, 'Invalid employee data provided');
+        return;
+    }
+    
+    $employees = $data['employees'];
+    $successCount = 0;
+    $errorCount = 0;
+    $errors = [];
+    
+    try {
+        // Start transaction
+        $pdo->beginTransaction();
+        
+        foreach ($employees as $index => $employee) {
+            // Validate required fields
+            if (empty($employee['id']) || empty($employee['name'])) {
+                $errors[] = "Row " . ($index + 1) . ": Employee ID and Name are required";
+                $errorCount++;
+                continue;
+            }
+            
+            $id = trim($employee['id']);
+            $name = trim($employee['name']);
+            
+            // Check if employee ID already exists
+            $stmt = $pdo->prepare("SELECT id FROM employees WHERE id = ?");
+            $stmt->execute([$id]);
+            if ($stmt->fetch()) {
+                $errors[] = "Row " . ($index + 1) . ": Employee ID '$id' already exists";
+                $errorCount++;
+                continue;
+            }
+            
+            // Insert employee
+            $stmt = $pdo->prepare("INSERT INTO employees (id, name) VALUES (?, ?)");
+            if ($stmt->execute([$id, $name])) {
+                $successCount++;
+            } else {
+                $errors[] = "Row " . ($index + 1) . ": Failed to insert employee '$id'";
+                $errorCount++;
+            }
+        }
+        
+        // Commit transaction
+        $pdo->commit();
+        
+        $message = "Import completed: $successCount employees imported";
+        if ($errorCount > 0) {
+            $message .= ", $errorCount errors occurred";
+        }
+        
+        sendJsonResponse(true, $message, [
+            'successCount' => $successCount,
+            'errorCount' => $errorCount,
+            'errors' => $errors
+        ]);
+        
+    } catch(PDOException $e) {
+        // Rollback transaction on error
+        $pdo->rollback();
+        error_log("Import employees error: " . $e->getMessage());
+        sendJsonResponse(false, 'Database error occurred during import');
+    }
+}
+
+/**
+ * Import multiple borrowers from Excel data
+ */
+function importBorrowers() {
+    $pdo = getDB();
+    
+    // Get JSON data from POST body
+    $input = file_get_contents('php://input');
+    $data = json_decode($input, true);
+    
+    if (!$data || !isset($data['borrowers']) || !is_array($data['borrowers'])) {
+        sendJsonResponse(false, 'Invalid borrower data provided');
+        return;
+    }
+    
+    $borrowers = $data['borrowers'];
+    $successCount = 0;
+    $errorCount = 0;
+    $errors = [];
+    
+    try {
+        // Start transaction
+        $pdo->beginTransaction();
+        
+        foreach ($borrowers as $index => $borrower) {
+            // Validate required fields
+            if (empty($borrower['empId']) || empty($borrower['name']) || empty($borrower['amount']) || 
+                empty($borrower['emi']) || empty($borrower['month']) || empty($borrower['disbursedDate'])) {
+                $errors[] = "Row " . ($index + 1) . ": All fields are required";
+                $errorCount++;
+                continue;
+            }
+            
+            $empId = trim($borrower['empId']);
+            $name = trim($borrower['name']);
+            $amount = floatval($borrower['amount']);
+            $emi = floatval($borrower['emi']);
+            $months = intval($borrower['month']);
+            $disbursedDate = convertDateToYYYYMMDD($borrower['disbursedDate']);
+            
+            // Check if employee exists
+            $stmt = $pdo->prepare("SELECT id FROM employees WHERE id = ?");
+            $stmt->execute([$empId]);
+            if (!$stmt->fetch()) {
+                $errors[] = "Row " . ($index + 1) . ": Employee ID '$empId' not found";
+                $errorCount++;
+                continue;
+            }
+            
+            // Check if borrower already exists for this employee
+            $stmt = $pdo->prepare("SELECT emp_id FROM borrowers WHERE emp_id = ? AND status = 'active'");
+            $stmt->execute([$empId]);
+            if ($stmt->fetch()) {
+                $errors[] = "Row " . ($index + 1) . ": Active advance already exists for employee '$empId'";
+                $errorCount++;
+                continue;
+            }
+            
+            // Insert borrower
+            $stmt = $pdo->prepare("INSERT INTO borrowers (emp_id, name, amount, emi, months, disbursed_date) VALUES (?, ?, ?, ?, ?, ?)");
+            if ($stmt->execute([$empId, $name, $amount, $emi, $months, $disbursedDate])) {
+                $successCount++;
+            } else {
+                $errors[] = "Row " . ($index + 1) . ": Failed to insert borrower '$empId'";
+                $errorCount++;
+            }
+        }
+        
+        // Commit transaction
+        $pdo->commit();
+        
+        $message = "Import completed: $successCount borrowers imported";
+        if ($errorCount > 0) {
+            $message .= ", $errorCount errors occurred";
+        }
+        
+        sendJsonResponse(true, $message, [
+            'successCount' => $successCount,
+            'errorCount' => $errorCount,
+            'errors' => $errors
+        ]);
+        
+    } catch(PDOException $e) {
+        // Rollback transaction on error
+        $pdo->rollback();
+        error_log("Import borrowers error: " . $e->getMessage());
+        sendJsonResponse(false, 'Database error occurred during import');
+    }
+}
+
+/**
+ * Import multiple vouchers from Excel data
+ */
+function importVouchers() {
+    $pdo = getDB();
+    
+    // Get JSON data from POST body
+    $input = file_get_contents('php://input');
+    $data = json_decode($input, true);
+    
+    if (!$data || !isset($data['vouchers']) || !is_array($data['vouchers'])) {
+        sendJsonResponse(false, 'Invalid voucher data provided');
+        return;
+    }
+    
+    $vouchers = $data['vouchers'];
+    $successCount = 0;
+    $errorCount = 0;
+    $errors = [];
+    
+    try {
+        // Start transaction
+        $pdo->beginTransaction();
+        
+        foreach ($vouchers as $index => $voucher) {
+            // Validate required fields
+            if (empty($voucher['id']) || empty($voucher['empId']) || empty($voucher['empName']) || 
+                empty($voucher['date']) || empty($voucher['amount']) || empty($voucher['month'])) {
+                $errors[] = "Row " . ($index + 1) . ": All fields are required";
+                $errorCount++;
+                continue;
+            }
+            
+            $id = trim($voucher['id']);
+            $empId = trim($voucher['empId']);
+            $empName = trim($voucher['empName']);
+            $date = convertDateToYYYYMMDD($voucher['date']);
+            $amount = floatval($voucher['amount']);
+            $month = trim($voucher['month']);
+            
+            // Check if voucher ID already exists
+            $stmt = $pdo->prepare("SELECT id FROM vouchers WHERE id = ?");
+            $stmt->execute([$id]);
+            if ($stmt->fetch()) {
+                $errors[] = "Row " . ($index + 1) . ": Voucher ID '$id' already exists";
+                $errorCount++;
+                continue;
+            }
+            
+            // Check if employee exists
+            $stmt = $pdo->prepare("SELECT id FROM employees WHERE id = ?");
+            $stmt->execute([$empId]);
+            if (!$stmt->fetch()) {
+                $errors[] = "Row " . ($index + 1) . ": Employee ID '$empId' not found";
+                $errorCount++;
+                continue;
+            }
+            
+            // Insert voucher
+            $stmt = $pdo->prepare("INSERT INTO vouchers (id, emp_id, emp_name, voucher_date, amount, month) VALUES (?, ?, ?, ?, ?, ?)");
+            if ($stmt->execute([$id, $empId, $empName, $date, $amount, $month])) {
+                $successCount++;
+            } else {
+                $errors[] = "Row " . ($index + 1) . ": Failed to insert voucher '$id'";
+                $errorCount++;
+            }
+        }
+        
+        // Commit transaction
+        $pdo->commit();
+        
+        $message = "Import completed: $successCount vouchers imported";
+        if ($errorCount > 0) {
+            $message .= ", $errorCount errors occurred";
+        }
+        
+        sendJsonResponse(true, $message, [
+            'successCount' => $successCount,
+            'errorCount' => $errorCount,
+            'errors' => $errors
+        ]);
+        
+    } catch(PDOException $e) {
+        // Rollback transaction on error
+        $pdo->rollback();
+        error_log("Import vouchers error: " . $e->getMessage());
+        sendJsonResponse(false, 'Database error occurred during import');
+    }
 }
 ?>
