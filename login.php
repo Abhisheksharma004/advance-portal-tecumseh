@@ -10,6 +10,15 @@ header('Content-Type: application/json; charset=utf-8');
 // Turn off error display to prevent HTML errors in JSON
 ini_set('display_errors', 0);
 ini_set('log_errors', 1);
+// Helper function to send JSON response and exit
+function sendJsonResponse($success, $message, $data = null) {
+    $response = ['success' => $success, 'message' => $message];
+    if ($data !== null) {
+        $response = array_merge($response, $data);
+    }
+    echo json_encode($response);
+    exit;
+}
 
 // Start output buffering to catch any unexpected output
 ob_start();

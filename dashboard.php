@@ -259,7 +259,7 @@ $currentUser = getCurrentUser();
                     <div class="header-actions">
                         <button class="import-btn" onclick="importData('voucher')">📥 Import</button>
                         <button class="export-btn" onclick="exportData('voucher')">📤 Export</button>
-                        <button class="add-btn" onclick="addRecord('voucher')">+ Create New Voucher</button>
+                        <button class="add-btn" onclick="addRecord('voucher')">+ Create Voucher</button>
                     </div>
                 </div>
 
@@ -271,18 +271,17 @@ $currentUser = getCurrentUser();
                     <table class="requests-table">
                         <thead>
                             <tr>
-                                <th>Voucher No.</th>
                                 <th>Employee ID</th>
                                 <th>Employee Name</th>
-                                <th>Voucher Date</th>
-                                <th>Amount</th>
-                                <th>Month</th>
+                                <th>Total Vouchers</th>
+                                <th>Total Amount</th>
+                                <th>Status</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr>
-                                <td colspan="7" style="text-align: center; padding: 20px; color: #666;">No vouchers found. Click "Create New Voucher" to get started.</td>
+                                <td colspan="6" style="text-align: center; padding: 20px; color: #666;">No vouchers found. Click "Create New Voucher" to get started.</td>
                             </tr>
                         </tbody>
                     </table>

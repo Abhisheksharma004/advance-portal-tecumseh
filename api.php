@@ -258,7 +258,8 @@ function getVouchers() {
     // Convert to the format expected by the frontend
     $result = [];
     foreach ($vouchers as $voucher) {
-        $result[$voucher['id']] = [
+        $result[$voucher['auto_id']] = [
+            'auto_id' => $voucher['auto_id'],
             'id' => $voucher['id'],
             'empId' => $voucher['emp_id'],
             'empName' => $voucher['emp_name'],
@@ -419,23 +420,19 @@ function addVoucher() {
     $month = trim($_POST['month']);
     
     try {
-        // Check if voucher ID already exists
-        $stmt = $pdo->prepare("SELECT id FROM vouchers WHERE id = ?");
-        $stmt->execute([$id]);
-        if ($stmt->fetch()) {
-            sendJsonResponse(false, 'Voucher ID already exists');
-            return;
-        }
-        
-        // Insert new voucher
+        // Insert new voucher (same voucher number can belong to multiple employees)
         $stmt = $pdo->prepare("INSERT INTO vouchers (id, emp_id, emp_name, voucher_date, amount, month) VALUES (?, ?, ?, ?, ?, ?)");
         $stmt->execute([$id, $empId, $empName, $date, $amount, $month]);
         
+        // Get the auto-generated ID
+        $autoId = $pdo->lastInsertId();
+        
         sendJsonResponse(true, 'Voucher added successfully', [
+            'auto_id' => $autoId,
             'id' => $id,
             'empId' => $empId,
             'empName' => $empName,
-            'date' => $date,
+            'date' => convertDateToDDMMYYYY($date),
             'amount' => $amount,
             'month' => $month
         ]);
@@ -513,11 +510,12 @@ function updateBorrower() {
 function updateVoucher() {
     $pdo = getDB();
     
-    if (empty($_POST['id']) || empty($_POST['empName']) || empty($_POST['amount'])) {
+    if (empty($_POST['auto_id']) || empty($_POST['empName']) || empty($_POST['amount'])) {
         sendJsonResponse(false, 'Required fields are missing');
         return;
     }
     
+    $autoId = intval($_POST['auto_id']);
     $id = trim($_POST['id']);
     $empId = trim($_POST['empId']);
     $empName = trim($_POST['empName']);
@@ -526,8 +524,8 @@ function updateVoucher() {
     $month = trim($_POST['month']);
     
     try {
-        $stmt = $pdo->prepare("UPDATE vouchers SET emp_id = ?, emp_name = ?, voucher_date = ?, amount = ?, month = ? WHERE id = ?");
-        $stmt->execute([$empId, $empName, $date, $amount, $month, $id]);
+        $stmt = $pdo->prepare("UPDATE vouchers SET id = ?, emp_id = ?, emp_name = ?, voucher_date = ?, amount = ?, month = ? WHERE auto_id = ?");
+        $stmt->execute([$id, $empId, $empName, $date, $amount, $month, $autoId]);
         
         if ($stmt->rowCount() > 0) {
             sendJsonResponse(true, 'Voucher updated successfully');
@@ -602,16 +600,16 @@ function deleteBorrower() {
 function deleteVoucher() {
     $pdo = getDB();
     
-    if (empty($_POST['id'])) {
+    if (empty($_POST['auto_id'])) {
         sendJsonResponse(false, 'Voucher ID is required');
         return;
     }
     
-    $id = trim($_POST['id']);
+    $autoId = intval($_POST['auto_id']);
     
     try {
-        $stmt = $pdo->prepare("DELETE FROM vouchers WHERE id = ?");
-        $stmt->execute([$id]);
+        $stmt = $pdo->prepare("DELETE FROM vouchers WHERE auto_id = ?");
+        $stmt->execute([$autoId]);
         
         if ($stmt->rowCount() > 0) {
             sendJsonResponse(true, 'Voucher deleted successfully');

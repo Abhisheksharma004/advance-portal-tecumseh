@@ -50,7 +50,8 @@ try {
         )",
         
         'vouchers' => "CREATE TABLE IF NOT EXISTS vouchers (
-            id VARCHAR(20) PRIMARY KEY,
+            auto_id INT AUTO_INCREMENT PRIMARY KEY,
+            id VARCHAR(20) NOT NULL,
             emp_id VARCHAR(20) NOT NULL,
             emp_name VARCHAR(255) NOT NULL,
             voucher_date DATE NOT NULL,
@@ -59,7 +60,9 @@ try {
             status ENUM('pending', 'approved', 'rejected', 'processed') DEFAULT 'pending',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            FOREIGN KEY (emp_id) REFERENCES employees(id) ON DELETE CASCADE
+            FOREIGN KEY (emp_id) REFERENCES employees(id) ON DELETE CASCADE,
+            INDEX idx_voucher_id (id),
+            INDEX idx_emp_voucher (emp_id, id)
         )"
     ];
     
@@ -78,18 +81,22 @@ try {
     $adminExists = $stmt->fetchColumn();
     
     if (!$adminExists) {
-        $adminPassword = password_hash('admin123', PASSWORD_DEFAULT);
+        $adminPassword = password_hash('admin', PASSWORD_DEFAULT);
         $stmt = $pdo->prepare("INSERT INTO users (username, email, password, role) VALUES ('admin', 'admin@tecumseh.com', ?, 'admin')");
         $stmt->execute([$adminPassword]);
         echo "<p>✓ Default admin user created</p>";
         echo "<p><strong>Login Credentials:</strong></p>";
         echo "<p>Email: admin@tecumseh.com</p>";
-        echo "<p>Password: admin123</p>";
+        echo "<p>Password: admin</p>";
     } else {
-        echo "<p>✓ Admin user already exists</p>";
+        // Reset password to 'admin' for existing admin user
+        $adminPassword = password_hash('admin', PASSWORD_DEFAULT);
+        $stmt = $pdo->prepare("UPDATE users SET password = ? WHERE email = 'admin@tecumseh.com'");
+        $stmt->execute([$adminPassword]);
+        echo "<p>✓ Admin user already exists. Password has been reset.</p>";
         echo "<p><strong>Use these credentials to login:</strong></p>";
         echo "<p>Email: admin@tecumseh.com</p>";
-        echo "<p>Password: admin123</p>";
+        echo "<p>Password: admin</p>";
     }
     
     echo "<h3>Database setup completed successfully!</h3>";

@@ -84,7 +84,15 @@ function convertDateFormat(dateString) {
  */
 async function loadDataFromAPI(type) {
     try {
-        const response = await fetch(`api.php?action=get_${type}`, {
+        // Map the correct API action names
+        const actionMap = {
+            'employees': 'get_employees',
+            'borrowers': 'get_borrowers', 
+            'vouchers': 'get_vouchers'
+        };
+        
+        const action = actionMap[type] || `get${type.charAt(0).toUpperCase()}${type.slice(1)}`;
+        const response = await fetch(`api.php?action=${action}`, {
             credentials: 'same-origin'
         });
         
@@ -362,30 +370,112 @@ function renderVoucherTable() {
     if (!tbody) return;
     
     if (Object.keys(vouchers).length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 20px; color: #666;">No vouchers found. Click "Create New Voucher" to get started.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 20px; color: #666;">No vouchers found. Click "Create New Voucher" to get started.</td></tr>';
         return;
     }
     
-    let html = '';
+    // Group vouchers by employee
+    const employeeGroups = {};
     Object.values(vouchers).forEach(voucher => {
+        const empId = voucher.empId;
+        if (!employeeGroups[empId]) {
+            employeeGroups[empId] = {
+                empId: voucher.empId,
+                empName: voucher.empName,
+                vouchers: [],
+                totalAmount: 0
+            };
+        }
+        employeeGroups[empId].vouchers.push(voucher);
+        employeeGroups[empId].totalAmount += parseFloat(voucher.amount);
+    });
+    
+    let html = '';
+    Object.values(employeeGroups).forEach(employee => {
+        const status = employee.vouchers.length > 5 ? 'High Activity' : employee.vouchers.length > 2 ? 'Moderate' : 'Low Activity';
+        const statusClass = employee.vouchers.length > 5 ? 'status-high' : employee.vouchers.length > 2 ? 'status-moderate' : 'status-low';
+        
         html += `
             <tr>
-                <td>${voucher.id}</td>
-                <td>${voucher.empId}</td>
-                <td>${voucher.empName}</td>
-                <td>${convertDateFormat(voucher.date)}</td>
-                <td>₹${voucher.amount}</td>
-                <td>${voucher.month}</td>
+                <td>${employee.empId}</td>
+                <td>${employee.empName}</td>
+                <td><span class="voucher-count">${employee.vouchers.length}</span></td>
+                <td><span class="amount-total">₹${employee.totalAmount.toLocaleString()}</span></td>
+                <td><span class="status ${statusClass}">${status}</span></td>
                 <td>
-                    <button class="view-btn" onclick="viewRecord('voucher', '${voucher.id}')">View</button>
-                    <button class="edit-btn" onclick="editRecord('voucher', '${voucher.id}')">Edit</button>
-                    <button class="delete-btn" onclick="deleteRecord('voucher', '${voucher.id}')">Delete</button>
+                    <button class="view-btn" onclick="viewEmployeeVouchers('${employee.empId}')">View Vouchers</button>
                 </td>
             </tr>
         `;
     });
     
     tbody.innerHTML = html;
+}
+
+/**
+ * View all vouchers for a specific employee
+ * @param {string} empId - Employee ID to view vouchers for
+ */
+function viewEmployeeVouchers(empId) {
+    const vouchers = data.vouchers;
+    const employeeVouchers = Object.values(vouchers).filter(voucher => voucher.empId === empId);
+    
+    if (employeeVouchers.length === 0) {
+        alert('No vouchers found for this employee');
+        return;
+    }
+    
+    const employee = employeeVouchers[0]; // Get employee details from first voucher
+    
+    let vouchersList = '';
+    let totalAmount = 0;
+    
+    employeeVouchers.forEach((voucher, index) => {
+        totalAmount += parseFloat(voucher.amount);
+        vouchersList += `
+            <div class="voucher-item" style="border-bottom: 1px solid #eee; padding: 10px 0; margin: 5px 0;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <strong>Voucher #${voucher.id}</strong> - 
+                        Date: ${convertDateFormat(voucher.date)} - 
+                        Month: ${voucher.month} - 
+                        Amount: <span style="color: #28a745; font-weight: bold;">₹${voucher.amount}</span>
+                    </div>
+                    <div>
+                        <button class="edit-btn" onclick="editRecord('voucher', '${voucher.auto_id}')" style="margin-right: 5px; padding: 5px 10px; font-size: 12px;">Edit</button>
+                        <button class="delete-btn" onclick="deleteRecord('voucher', '${voucher.auto_id}')" style="padding: 5px 10px; font-size: 12px;">Delete</button>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    const content = `
+        <div class="employee-vouchers-details">
+            <div class="employee-header" style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+                <h3 style="margin: 0 0 10px 0; color: #333;">Employee Vouchers</h3>
+                <div class="detail-row"><strong>Employee ID:</strong> ${employee.empId}</div>
+                <div class="detail-row"><strong>Employee Name:</strong> ${employee.empName}</div>
+                <div class="detail-row"><strong>Total Vouchers:</strong> ${employeeVouchers.length}</div>
+                <div class="detail-row"><strong>Total Amount:</strong> <span style="color: #28a745; font-weight: bold;">₹${totalAmount.toLocaleString()}</span></div>
+            </div>
+            
+            <div class="vouchers-list">
+                <h4 style="margin-bottom: 15px; color: #333;">All Vouchers:</h4>
+                ${vouchersList}
+            </div>
+            
+            <div style="margin-top: 20px; text-align: center;">
+                <button class="btn btn-secondary" onclick="closeModal('viewModal')">Close</button>
+            </div>
+        </div>
+    `;
+
+    const viewModalBody = document.getElementById('viewModalBody');
+    if (viewModalBody) {
+        viewModalBody.innerHTML = content;
+        openModal('viewModal');
+    }
 }
 
 // ========================================
@@ -746,9 +836,10 @@ function editRecord(type, id) {
             break;
         case 'voucher':
             formFields = `
+                <input type="hidden" name="auto_id" value="${record.auto_id}">
                 <div class="form-group">
                     <label>Voucher No:</label>
-                    <input type="text" name="id" value="${record.id}" readonly>
+                    <input type="text" name="id" value="${record.id}" required>
                 </div>
                 <div class="form-group">
                     <label>Employee ID:</label>
@@ -861,16 +952,16 @@ function addRecord(type) {
             const today = new Date().toISOString().split('T')[0];
             formFields = `
                 <div class="form-group">
-                    <label>Voucher No:</label>
-                    <input type="text" name="id" required placeholder="VCH-004">
-                </div>
-                <div class="form-group">
                     <label>Employee ID:</label>
                     <input type="text" id="voucher-empId" name="empId" required placeholder="EMP001">
                 </div>
                 <div class="form-group">
                     <label>Employee Name:</label>
                     <input type="text" id="voucher-empName" name="empName" required placeholder="Enter employee name">
+                </div>
+                <div class="form-group">
+                    <label>Voucher No:</label>
+                    <input type="text" name="id" required placeholder="VCH-004">
                 </div>
                 <div class="form-group">
                     <label>Voucher Date:</label>
@@ -1885,9 +1976,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     const record = result.data;
                     
                     // For borrowers, use empId as the key instead of generating a separate ID
+                    // For vouchers, use auto_id as the key to allow duplicate voucher numbers
                     let recordKey;
                     if (type === 'borrower') {
                         recordKey = record.empId;
+                    } else if (type === 'voucher') {
+                        recordKey = record.auto_id;
                     } else {
                         recordKey = record.id;
                     }
@@ -1934,7 +2028,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 } else if (currentDeleteType === 'borrower') {
                     formData.append('empId', currentDeleteId);
                 } else if (currentDeleteType === 'voucher') {
-                    formData.append('id', currentDeleteId);
+                    formData.append('auto_id', currentDeleteId);
                 }
                 
                 // Send delete request to API
