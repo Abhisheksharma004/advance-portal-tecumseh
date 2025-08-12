@@ -1,3 +1,67 @@
+// Show/hide password functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const passwordInput = document.getElementById('password');
+    const eyeIcon = document.getElementById('eye-icon');
+    
+    if (passwordInput && eyeIcon) {
+        eyeIcon.style.cursor = 'pointer';
+        eyeIcon.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const isPassword = passwordInput.type === 'password';
+            passwordInput.type = isPassword ? 'text' : 'password';
+            eyeIcon.setAttribute('fill', isPassword ? '#2196f3' : '#7b7b7b');
+        });
+    }
+});
+
+// Login Page JavaScript
+// Authentication and login functionality with PHP backend
+
+/**
+ * Submit login request to PHP backend
+ */
+async function submitLogin(email, password) {
+    try {
+        const response = await fetch('login.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                email: email,
+                password: password
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const responseText = await response.text();
+        
+        if (!responseText.trim().startsWith('{') && !responseText.trim().startsWith('[')) {
+            showErrorMessage('Server error: Invalid response format');
+            return;
+        }
+
+        const result = JSON.parse(responseText);
+
+        if (result && result.success) {
+            showSuccessMessage(result.message + ' Redirecting to dashboard...');
+            
+            // Safe redirect with explicit check
+            const redirectUrl = (result && result.redirect) ? result.redirect : 'dashboard.php';
+            
+            // Direct redirect
+            window.location.href = redirectUrl;
+        } else {
+            showErrorMessage(result ? result.message : 'Login failed');
+        }
+    } catch (error) {
+        showErrorMessage('Connection error. Please try again.');
+    }
+}
 // Login Page JavaScript
 // Authentication and login functionality with PHP backend
 
@@ -34,10 +98,8 @@ async function submitLogin(email, password) {
         if (result.success) {
             showSuccessMessage(result.message + ' Redirecting to dashboard...');
             
-            // Redirect after success
-            setTimeout(() => {
-                window.location.href = result.data.redirect;
-            }, 1500);
+            // Direct redirect - fix the property path
+            window.location.href = result.redirect || 'dashboard.php';
         } else {
             showErrorMessage(result.message);
         }

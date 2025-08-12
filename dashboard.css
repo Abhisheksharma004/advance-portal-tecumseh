@@ -418,6 +418,12 @@ body {
     color: #856404;
 }
 
+.status.status-warning {
+    background: #ffeaa7;
+    color: #d63031;
+    border: 1px solid #fdcb6e;
+}
+
 /* Voucher Employee Activity Status */
 .status.status-high {
     background: #f8d7da;
@@ -1034,6 +1040,137 @@ body {
 
 /* Additional Styles for New Components */
 
+/* Failed Data Report Styles */
+.failed-data-report {
+    width: 100%;
+    padding: 1rem;
+}
+
+.failed-data-section {
+    margin-bottom: 2rem;
+    background: #fff;
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+    overflow: hidden;
+}
+
+.failed-data-section h4 {
+    background: #f8d7da;
+    color: #721c24;
+    margin: 0;
+    padding: 1rem;
+    border-bottom: 1px solid #f5c6cb;
+    font-size: 1.1rem;
+}
+
+.failed-data-table-container {
+    overflow-x: auto;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.failed-data-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 700px;
+}
+
+.failed-data-table th {
+    background: #f8f9fa;
+    color: #333;
+    font-weight: 600;
+    padding: 0.8rem;
+    text-align: left;
+    border-bottom: 2px solid #dee2e6;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.failed-data-table td {
+    padding: 0.8rem;
+    border-bottom: 1px solid #dee2e6;
+    vertical-align: top;
+}
+
+.failed-data-table tbody tr:hover {
+    background: #f8f9fa;
+}
+
+.failure-reason {
+    color: #d63031;
+    font-weight: 500;
+    max-width: 200px;
+    word-wrap: break-word;
+}
+
+.data-preview {
+    font-family: monospace;
+    font-size: 0.85rem;
+    color: #666;
+    max-width: 250px;
+    word-wrap: break-word;
+    cursor: help;
+}
+
+.failed-data-details {
+    padding: 1rem;
+}
+
+.failed-data-details .detail-info {
+    background: #f8f9fa;
+    padding: 1rem;
+    border-radius: 6px;
+    margin-bottom: 1rem;
+}
+
+.failed-data-details .detail-info p {
+    margin: 0.5rem 0;
+}
+
+.failed-data-details .original-data {
+    margin-top: 1rem;
+}
+
+.failed-data-details .original-data h5 {
+    color: #2c3e50;
+    margin-bottom: 0.5rem;
+}
+
+.failed-data-details pre {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 1rem;
+    overflow-x: auto;
+    font-size: 0.85rem;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+/* Responsive design for failed data tables */
+@media (max-width: 768px) {
+    .failed-data-table {
+        min-width: 600px;
+        font-size: 0.8rem;
+    }
+    
+    .failed-data-table th,
+    .failed-data-table td {
+        padding: 0.5rem 0.3rem;
+    }
+    
+    .data-preview {
+        max-width: 150px;
+        font-size: 0.75rem;
+    }
+    
+    .failure-reason {
+        max-width: 120px;
+        font-size: 0.8rem;
+    }
+}
+
 /* Page Header with Add Button */
 .page-header {
     display: flex;
@@ -1279,7 +1416,7 @@ body {
     background: #c82333;
 }
 
-/* Modal Styles */
+/* Modal Styles - Updated for Full Screen View */
 .modal {
     display: none;
     position: fixed;
@@ -1301,6 +1438,75 @@ body {
     max-height: 80vh;
     overflow-y: auto;
     animation: slideIn 0.3s ease-out;
+}
+
+/* Full Screen Modal Styles */
+.modal.fullscreen .modal-content {
+    margin: 0;
+    border-radius: 0;
+    width: 100vw;
+    height: 100vh;
+    max-width: none;
+    max-height: none;
+    display: flex;
+    flex-direction: column;
+    animation: fadeIn 0.3s ease-out;
+}
+
+.modal.fullscreen .modal-header {
+    flex-shrink: 0;
+    padding: 1.5rem 2rem;
+    border-bottom: 2px solid #eee;
+    background-color: #f8f9fa;
+}
+
+.modal.fullscreen .modal-header h2 {
+    font-size: 1.8rem;
+    color: #2c3e50;
+}
+
+.modal.fullscreen .modal-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 2rem;
+    background-color: #fff;
+}
+
+/* Full screen specific content styling */
+.modal.fullscreen .borrower-history,
+.modal.fullscreen .voucher-details {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.modal.fullscreen .employee-info,
+.modal.fullscreen .voucher-info {
+    background-color: #f8f9fa;
+    padding: 1.5rem;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+}
+
+.modal.fullscreen .borrowing-summary {
+    margin-bottom: 2rem;
+}
+
+.modal.fullscreen .summary-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.modal.fullscreen .history-table-container {
+    overflow-x: auto;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.modal.fullscreen .history-table {
+    width: 100%;
+    min-width: 800px;
 }
 
 .delete-modal .modal-content {
@@ -1790,4 +1996,278 @@ body {
 
 .navbar .logout-btn {
     display: inline-block !important;
+}
+
+/* Borrower History Styles */
+.borrower-history {
+    max-width: 100%;
+    margin: 0 auto;
+}
+
+.employee-info {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.employee-info h3 {
+    color: #333;
+    margin-bottom: 15px;
+    font-size: 1.2em;
+}
+
+.borrowing-summary {
+    margin-bottom: 30px;
+}
+
+.borrowing-summary h3 {
+    color: #333;
+    margin-bottom: 15px;
+    font-size: 1.2em;
+}
+
+.summary-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.summary-card {
+    background: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    text-align: center;
+}
+
+.summary-value {
+    font-size: 1.5em;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 5px;
+}
+
+.summary-label {
+    font-size: 0.9em;
+    color: #666;
+}
+
+.borrowing-history h3 {
+    color: #333;
+    margin-bottom: 15px;
+    font-size: 1.2em;
+}
+
+.history-table-container {
+    max-height: 400px;
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+}
+
+.history-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #fff;
+}
+
+.history-table th,
+.history-table td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+}
+
+.history-table th {
+    background: #f8f9fa;
+    font-weight: 600;
+    color: #333;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.history-table tr:hover {
+    background: #f8f9fa;
+}
+
+.status-badge {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.85em;
+    font-weight: 500;
+    text-transform: capitalize;
+}
+
+.status-active {
+    background: #d4edda;
+    color: #155724;
+}
+
+.status-completed {
+    background: #d1ecf1;
+    color: #0c5460;
+}
+
+.status-cancelled {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+@media (max-width: 768px) {
+    .summary-cards {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .history-table-container {
+        max-height: 300px;
+    }
+    
+    .history-table th,
+    .history-table td {
+        padding: 8px;
+        font-size: 0.9em;
+    }
+}
+
+/* Report Preview Styles */
+.report-preview {
+    width: 100%;
+    padding: 1rem;
+}
+
+.report-summary {
+    margin-bottom: 2rem;
+    background: #f8f9fa;
+    padding: 1.5rem;
+    border-radius: 8px;
+}
+
+.report-summary h3 {
+    color: #2c3e50;
+    margin-bottom: 1rem;
+    font-size: 1.4rem;
+}
+
+.summary-stats {
+    display: flex;
+    gap: 2rem;
+    flex-wrap: wrap;
+}
+
+.stat-item {
+    text-align: center;
+    background: white;
+    padding: 1rem;
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    min-width: 120px;
+}
+
+.stat-value {
+    display: block;
+    font-size: 1.8rem;
+    font-weight: bold;
+    color: #2c3e50;
+    margin-bottom: 0.3rem;
+}
+
+.stat-label {
+    display: block;
+    font-size: 0.9rem;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.report-content {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+}
+
+.report-table-container {
+    overflow-x: auto;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    margin-top: 1rem;
+    background: white;
+}
+
+.report-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 600px;
+}
+
+.report-table th {
+    background: #f8f9fa;
+    color: #333;
+    font-weight: 600;
+    padding: 1rem 0.8rem;
+    text-align: left;
+    border-bottom: 2px solid #dee2e6;
+    white-space: nowrap;
+}
+
+.report-table td {
+    padding: 0.8rem;
+    border-bottom: 1px solid #dee2e6;
+    white-space: nowrap;
+}
+
+.report-table tbody tr:hover {
+    background: #f8f9fa;
+}
+
+.report-sections {
+    margin-top: 2rem;
+}
+
+.report-section {
+    background: #f8f9fa;
+    padding: 1.5rem;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+}
+
+.report-section h4 {
+    color: #2c3e50;
+    margin-bottom: 1rem;
+}
+
+.activity-summary p {
+    margin: 0.5rem 0;
+    color: #555;
+}
+
+.type-badge {
+    padding: 0.3rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.type-summary {
+    background: #e3f2fd;
+    color: #1565c0;
+}
+
+.type-detail {
+    background: #f3e5f5;
+    color: #7b1fa2;
+}
+
+.type-analytics {
+    background: #e8f5e8;
+    color: #2e7d32;
+}
+
+.type-complete {
+    background: #fff3e0;
+    color: #ef6c00;
 }

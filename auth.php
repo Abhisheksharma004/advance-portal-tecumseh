@@ -14,17 +14,15 @@ function authenticateUser($email, $password) {
     $pdo = getDB();
     
     try {
-        $stmt = $pdo->prepare("SELECT id, email, password, name, username, role, status FROM users WHERE email = ? AND status = 'active'");
+        $stmt = $pdo->prepare("SELECT id, email, password, username, role, status FROM users WHERE email = ? AND status = 'active'");
         $stmt->execute([$email]);
         $user = $stmt->fetch();
         
         if ($user && password_verify($password, $user['password'])) {
             // Remove password from user data
             unset($user['password']);
-            // Use name if available, otherwise use username
-            if (empty($user['name']) && !empty($user['username'])) {
-                $user['name'] = $user['username'];
-            }
+            // Set name to username for display
+            $user['name'] = $user['username'];
             return $user;
         }
         

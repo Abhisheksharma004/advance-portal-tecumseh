@@ -15,7 +15,6 @@ if (isLoggedIn()) {
     <title>Sign In - Advance Portal</title>
     <link rel="stylesheet" href="style.css">
     <!-- External JavaScript file -->
-    <script src="login.js"></script>
 </head>
 <body>
     <div class="signin-container">
@@ -36,8 +35,8 @@ if (isLoggedIn()) {
                     <svg width="20" height="20" fill="#7b7b7b" viewBox="0 0 24 24"><path d="M12 17a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm6-7V7a6 6 0 0 0-12 0v3a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2zm-8-3a4 4 0 0 1 8 0v3H6V7z"/></svg>
                 </span>
                 <input type="password" id="password" name="password" placeholder="Password" required>
-                <span class="input-icon right">
-                    <svg width="20" height="20" fill="#7b7b7b" viewBox="0 0 24 24"><path d="M12 5c-7 0-11 7-11 7s4 7 11 7 11-7 11-7-4-7-11-7zm0 12c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/></svg>
+                <span class="input-icon right" id="toggle-password" style="cursor:pointer;">
+                    <svg id="eye-icon" width="20" height="20" fill="#7b7b7b" viewBox="0 0 24 24"><path d="M12 5c-7 0-11 7-11 7s4 7 11 7 11-7 11-7-4-7-11-7zm0 12c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/></svg>
                 </span>
             </div>
             <div class="options-row">
@@ -52,5 +51,28 @@ if (isLoggedIn()) {
             </div>
         </form>
     </div>
+    <script src="login.js"></script>
+    <script>
+        // Inline backup script to ensure functionality works
+        window.addEventListener('load', function() {
+            const passwordInput = document.getElementById('password');
+            const eyeIcon = document.getElementById('eye-icon');
+            const togglePassword = document.getElementById('toggle-password');
+            
+            if (passwordInput && (eyeIcon || togglePassword)) {
+                const clickTarget = eyeIcon || togglePassword;
+                clickTarget.style.cursor = 'pointer';
+                clickTarget.onclick = function() {
+                    if (passwordInput.type === 'password') {
+                        passwordInput.type = 'text';
+                        if (eyeIcon) eyeIcon.setAttribute('fill', '#2196f3');
+                    } else {
+                        passwordInput.type = 'password';
+                        if (eyeIcon) eyeIcon.setAttribute('fill', '#7b7b7b');
+                    }
+                };
+            }
+        });
+    </script>
 </body>
 </html>

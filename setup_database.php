@@ -37,16 +37,22 @@ try {
         )",
         
         'borrowers' => "CREATE TABLE IF NOT EXISTS borrowers (
-            emp_id VARCHAR(20) PRIMARY KEY,
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            application_no VARCHAR(50) NOT NULL UNIQUE,
+            emp_id VARCHAR(20) NOT NULL,
             name VARCHAR(255) NOT NULL,
             amount DECIMAL(10, 2) NOT NULL,
+            outstanding_amount DECIMAL(10, 2) NOT NULL DEFAULT 0,
             emi DECIMAL(10, 2) NOT NULL,
             months INT NOT NULL,
             disbursed_date DATE NOT NULL,
             status ENUM('active', 'cancelled', 'completed') DEFAULT 'active',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            FOREIGN KEY (emp_id) REFERENCES employees(id) ON DELETE CASCADE
+            FOREIGN KEY (emp_id) REFERENCES employees(id) ON DELETE CASCADE,
+            INDEX idx_emp_id (emp_id),
+            INDEX idx_status (status),
+            INDEX idx_application_no (application_no)
         )",
         
         'vouchers' => "CREATE TABLE IF NOT EXISTS vouchers (
@@ -57,12 +63,14 @@ try {
             voucher_date DATE NOT NULL,
             amount DECIMAL(10, 2) NOT NULL,
             month VARCHAR(20) NOT NULL,
+            application_no VARCHAR(50),
             status ENUM('pending', 'approved', 'rejected', 'processed') DEFAULT 'pending',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             FOREIGN KEY (emp_id) REFERENCES employees(id) ON DELETE CASCADE,
             INDEX idx_voucher_id (id),
-            INDEX idx_emp_voucher (emp_id, id)
+            INDEX idx_emp_voucher (emp_id, id),
+            INDEX idx_application_no (application_no)
         )"
     ];
     

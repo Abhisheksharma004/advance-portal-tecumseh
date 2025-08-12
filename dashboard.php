@@ -13,11 +13,11 @@ $currentUser = getCurrentUser();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - Advance Portal</title>
-    <link rel="stylesheet" href="dashboard.css">
+    <link rel="stylesheet" href="dashboard.css?v=<?php echo time(); ?>">
     <!-- SheetJS library for Excel file handling -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <!-- External JavaScript file -->
-    <script src="dashboard.js"></script>
+    <script src="dashboard.js?v=<?php echo time(); ?>"></script>
     <!-- Pass user data to JavaScript -->
     <script>
         window.currentUser = <?php echo json_encode($currentUser); ?>;
@@ -109,7 +109,7 @@ $currentUser = getCurrentUser();
                                 </svg>
                             </div>
                             <div class="stat-content">
-                                <h3>3</h3>
+                                <h3 id="total-employees">3</h3>
                                 <p>Total Employees</p>
                             </div>
                         </div>
@@ -121,7 +121,7 @@ $currentUser = getCurrentUser();
                                 </svg>
                             </div>
                             <div class="stat-content">
-                                <h3>0</h3>
+                                <h3 id="active-borrowers">0</h3>
                                 <p>Active Borrowers</p>
                             </div>
                         </div>
@@ -133,7 +133,7 @@ $currentUser = getCurrentUser();
                                 </svg>
                             </div>
                             <div class="stat-content">
-                                <h3>0</h3>
+                                <h3 id="active-vouchers">0</h3>
                                 <p>Active Vouchers</p>
                             </div>
                         </div>
@@ -145,7 +145,7 @@ $currentUser = getCurrentUser();
                                 </svg>
                             </div>
                             <div class="stat-content">
-                                <h3>₹0</h3>
+                                <h3 id="outstanding-amount">₹0</h3>
                                 <p>Outstanding Amount</p>
                             </div>
                         </div>
@@ -155,10 +155,10 @@ $currentUser = getCurrentUser();
                         <thead>
                             <tr>
                                 <th>Date</th>
+                                <th>Application No</th>
                                 <th>Employee</th>
                                 <th>Amount</th>
                                 <th>Type</th>
-                                <th>Status</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -230,9 +230,11 @@ $currentUser = getCurrentUser();
                     <table class="requests-table">
                         <thead>
                             <tr>
+                                <th>Application No</th>
                                 <th>Employee ID</th>
                                 <th>Name</th>
                                 <th>Advance Amount</th>
+                                <th>Outstanding Amount</th>
                                 <th>EMI</th>
                                 <th>Month</th>
                                 <th>Disbursed Date</th>
@@ -242,7 +244,7 @@ $currentUser = getCurrentUser();
                         </thead>
                         <tbody>
                             <tr>
-                                <td colspan="8" style="text-align: center; padding: 20px; color: #666;">No borrowers found. Click "Add New Borrower" to get started.</td>
+                                <td colspan="10" style="text-align: center; padding: 20px; color: #666;">No borrowers found. Click "Add New Borrower" to get started.</td>
                             </tr>
                         </tbody>
                     </table>
@@ -275,13 +277,12 @@ $currentUser = getCurrentUser();
                                 <th>Employee Name</th>
                                 <th>Total Vouchers</th>
                                 <th>Total Amount</th>
-                                <th>Status</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr>
-                                <td colspan="6" style="text-align: center; padding: 20px; color: #666;">No vouchers found. Click "Create New Voucher" to get started.</td>
+                                <td colspan="5" style="text-align: center; padding: 20px; color: #666;">No vouchers found. Click "Create New Voucher" to get started.</td>
                             </tr>
                         </tbody>
                     </table>
@@ -367,6 +368,17 @@ $currentUser = getCurrentUser();
                                 <td>
                                     <button class="view-btn" onclick="generateReport(4)">Generate</button>
                                     <button class="edit-btn" onclick="previewReport('voucher')">Preview</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Failed Data Report</td>
+                                <td>View failed/invalid data from import operations</td>
+                                <td>Error Log</td>
+                                <td>Live Data</td>
+                                <td><span class="status status-warning" id="failed-data-status">No Errors</span></td>
+                                <td>
+                                    <button class="view-btn" onclick="viewFailedData()">View Failed Data</button>
+                                    <button class="delete-btn" onclick="clearFailedData()">Clear Failed Data</button>
                                 </td>
                             </tr>
                         </tbody>

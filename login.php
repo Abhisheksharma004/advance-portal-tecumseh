@@ -72,10 +72,22 @@ if ($user) {
     // Log successful login
     error_log("Successful login for user: " . $email);
     
-    sendJsonResponse(true, 'Login successful', [
-        'user' => $user,
-        'redirect' => 'dashboard.php'
-    ]);
+    // Check if this is an AJAX request or regular form submission
+    $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+    $isJsonRequest = strpos($_SERVER['HTTP_CONTENT_TYPE'] ?? '', 'application/json') !== false || 
+                     strpos($_SERVER['CONTENT_TYPE'] ?? '', 'application/json') !== false;
+    
+    if ($isAjax || $isJsonRequest) {
+        // AJAX/JSON request - send JSON response
+        sendJsonResponse(true, 'Login successful', [
+            'user' => $user,
+            'redirect' => 'dashboard.php'
+        ]);
+    } else {
+        // Regular form submission - direct redirect
+        header('Location: dashboard.php');
+        exit;
+    }
 } else {
     // Log failed login attempt
     error_log("Failed login attempt for email: " . $email);
