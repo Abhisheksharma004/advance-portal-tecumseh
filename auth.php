@@ -4,7 +4,10 @@
  * Handles user login, logout, and session management
  */
 
-session_start();
+// Start session only if not already started
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 require_once 'config/database.php';
 
 /**
@@ -60,6 +63,31 @@ function getCurrentUser() {
         return null;
     }
     
+    // Fetch fresh user data from database instead of relying on session
+    try {
+        $pdo = getDB();
+        $stmt = $pdo->prepare("SELECT id, username, email, role FROM users WHERE id = ? AND status = 'active'");
+        $stmt->execute([$_SESSION['user_id']]);
+        $user = $stmt->fetch();
+        
+        if ($user) {
+            // Update session with fresh data
+            $_SESSION['user_email'] = $user['email'];
+            $_SESSION['user_name'] = $user['username'];
+            $_SESSION['user_role'] = $user['role'];
+            
+            return [
+                'id' => $user['id'],
+                'email' => $user['email'],
+                'name' => $user['username'],
+                'role' => $user['role']
+            ];
+        }
+    } catch (Exception $e) {
+        error_log("getCurrentUser error: " . $e->getMessage());
+    }
+    
+    // Fallback to session data if database query fails
     return [
         'id' => $_SESSION['user_id'],
         'email' => $_SESSION['user_email'],

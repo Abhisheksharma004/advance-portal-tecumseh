@@ -87,6 +87,14 @@ $currentUser = getCurrentUser();
                         Reports
                     </a>
                 </li>
+                <li class="menu-item">
+                    <a href="#settings">
+                        <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.82,11.69,4.82,12s0.02,0.64,0.07,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/>
+                        </svg>
+                        Settings
+                    </a>
+                </li>
             </ul>
         </aside>
 
@@ -193,7 +201,7 @@ $currentUser = getCurrentUser();
                     <table class="requests-table">
                         <thead>
                             <tr>
-                                <th>Employee ID</th>
+                                <th style="background-color: #e3f2fd; color: #1976d2; font-weight: bold;">Employee ID</th>
                                 <th>Employee Name</th>
                                 <th>Entry Date</th>
                                 <th>Actions</th>
@@ -201,7 +209,7 @@ $currentUser = getCurrentUser();
                         </thead>
                         <tbody>
                             <tr>
-                                <td colspan="3" style="text-align: center; padding: 20px; color: #666;">No employees found. Click "Add New Employee" to get started.</td>
+                                <td colspan="4" style="text-align: center; padding: 20px; color: #666;">No employees found. Click "Add New Employee" to get started.</td>
                             </tr>
                         </tbody>
                     </table>
@@ -239,12 +247,13 @@ $currentUser = getCurrentUser();
                                 <th>Month</th>
                                 <th>Disbursed Date</th>
                                 <th>Entry Date</th>
+                                <th>Status</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr>
-                                <td colspan="10" style="text-align: center; padding: 20px; color: #666;">No borrowers found. Click "Add New Borrower" to get started.</td>
+                                <td colspan="11" style="text-align: center; padding: 20px; color: #666;">No borrowers found. Click "Add New Borrower" to get started.</td>
                             </tr>
                         </tbody>
                     </table>
@@ -385,6 +394,68 @@ $currentUser = getCurrentUser();
                     </table>
                 </div>
             </div>
+
+            <!-- Settings Section -->
+            <div class="content-section" id="settings-content" style="display: none;">
+                <div class="page-header">
+                    <div class="header-content">
+                        <h1>Settings</h1>
+                        <p>Configure system preferences and application settings</p>
+                    </div>
+                    <div class="header-actions">
+                        <button class="btn btn-primary" onclick="saveAllSettings()">💾 Save All Settings</button>
+                        <button class="btn btn-secondary" onclick="resetToDefaults()">🔄 Reset to Defaults</button>
+                    </div>
+                </div>
+
+                <div class="settings-container">
+                    <!-- Security Settings -->
+                    <div class="settings-section">
+                        <h3>Security Settings</h3>
+                        <div class="settings-grid">
+                            <div class="setting-item">
+                                <label for="userEmail">Email Address</label>
+                                <div style="display: flex; gap: 10px; align-items: center;">
+                                    <input type="email" id="userEmail" name="userEmail" value="<?php echo htmlspecialchars($currentUser['email'] ?? 'admin@example.com'); ?>" class="form-input" style="flex: 1;">
+                                    <button class="btn btn-primary" onclick="updateEmail()" style="white-space: nowrap;">💾 Save</button>
+                                </div>
+                                <small>Your account email address</small>
+                            </div>
+                            <div class="setting-item">
+                                <label>Password</label>
+                                <button class="btn btn-warning" onclick="openChangePasswordModal()">🔐 Change Password</button>
+                                <small>Update your account password</small>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- System Information -->
+                    <div class="settings-section">
+                        <h3>System Information</h3>
+                        <div class="system-info">
+                            <div class="info-item">
+                                <label>Application Version:</label>
+                                <span>1.0.0</span>
+                            </div>
+                            <div class="info-item">
+                                <label>Database Version:</label>
+                                <span id="dbVersion">Loading...</span>
+                            </div>
+                            <div class="info-item">
+                                <label>Last Login:</label>
+                                <span id="lastLogin">Loading...</span>
+                            </div>
+                            <div class="info-item">
+                                <label>Total Records:</label>
+                                <span id="totalRecords">Loading...</span>
+                            </div>
+                            <div class="info-item">
+                                <label>Database Size:</label>
+                                <span id="dbSize">Loading...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </main>
     </div>
 
@@ -507,6 +578,39 @@ $currentUser = getCurrentUser();
                     <button type="button" class="btn btn-secondary" onclick="closeModal('importModal')">Cancel</button>
                     <button type="button" class="btn btn-primary" id="confirmImportBtn" onclick="confirmImport()" disabled>Import Data</button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Change Password Modal -->
+    <div id="changePasswordModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Change Password</h2>
+                <span class="close" onclick="closeModal('changePasswordModal')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="changePasswordForm">
+                    <div class="form-group">
+                        <label for="oldPassword">Current Password</label>
+                        <input type="password" id="oldPassword" name="oldPassword" class="form-input" required>
+                        <small>Enter your current password</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="newPassword">New Password</label>
+                        <input type="password" id="newPassword" name="newPassword" class="form-input" required minlength="6">
+                        <small>Password must be at least 6 characters long</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="confirmPassword">Confirm New Password</label>
+                        <input type="password" id="confirmPassword" name="confirmPassword" class="form-input" required>
+                        <small>Re-enter your new password</small>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" onclick="closeModal('changePasswordModal')">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Change Password</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>

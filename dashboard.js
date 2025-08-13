@@ -54,7 +54,12 @@ function convertDateFormat(dateString) {
     }
     
     // Convert to string if not already
-    const dateStr = String(dateString);
+    const dateStr = String(dateString).trim();
+    
+    // Return empty string if date is null, undefined, or empty
+    if (!dateStr || dateStr === 'null' || dateStr === 'undefined') {
+        return '';
+    }
     
     // Check if date is already in DD-MM-YYYY format
     if (dateStr.match(/^\d{2}-\d{2}-\d{4}$/)) {
@@ -77,9 +82,10 @@ function convertDateFormat(dateString) {
             return `${day}-${month}-${year}`;
         }
     } catch (e) {
-        console.warn('Could not parse date:', dateStr);
+        console.warn('Could not parse date:', dateStr, e);
     }
     
+    // If all else fails, return the original string
     return dateStr;
 }
 
@@ -121,6 +127,10 @@ function convertDateToHTMLFormat(dateString) {
     return '';
 }
 
+/**
+ * Generate unique voucher ID
+ * @returns {Promise<string>} - Unique voucher ID in format VCH-YYYYMMDD-XXX
+ */
 // ========================================
 // Data Loading Functions
 // ========================================
@@ -384,7 +394,7 @@ function renderEmployeeTable() {
         
         html += `
             <tr>
-                <td>${employee.id}</td>
+                <td style="font-weight: bold; background-color: #f8f9fa; color: #2196f3;">${employee.id}</td>
                 <td>${employee.name}</td>
                 <td>${entryDate}</td>
                 <td>
@@ -409,7 +419,7 @@ function renderBorrowerTable() {
     if (!tbody) return;
     
     if (Object.keys(borrowers).length === 0) {
-        tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 20px; color: #666;">No borrowers found. Click "Add New Borrower" to get started.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; padding: 20px; color: #666;">No borrowers found. Click "Add New Borrower" to get started.</td></tr>';
         return;
     }
     
@@ -426,8 +436,18 @@ function renderBorrowerTable() {
             });
         }
         
+        // Determine status display and styling
+        const isCompleted = borrower.status === 'completed' || (borrower.outstandingAmount && borrower.outstandingAmount <= 0);
+        const statusClass = isCompleted ? 'status-completed' : 'status-active';
+        const statusText = isCompleted ? 'Completed' : 'Active';
+        const rowClass = isCompleted ? 'completed-row' : '';
+        
+        // Determine if edit/delete should be disabled for completed records
+        const editDisabled = isCompleted ? 'disabled' : '';
+        const deleteDisabled = isCompleted ? 'disabled' : '';
+        
         html += `
-            <tr>
+            <tr class="${rowClass}">
                 <td>${borrower.applicationNo || 'N/A'}</td>
                 <td>${borrower.empId}</td>
                 <td>${borrower.name}</td>
@@ -437,10 +457,11 @@ function renderBorrowerTable() {
                 <td>${borrower.month || 'N/A'}</td>
                 <td>${convertDateFormat(borrower.disbursedDate)}</td>
                 <td>${entryDate}</td>
+                <td><span class="status ${statusClass}">${statusText}</span></td>
                 <td>
                     <button class="view-btn" onclick="viewRecord('borrower', '${borrower.empId}')">View History</button>
-                    <button class="edit-btn" onclick="editRecord('borrower', '${borrower.id}')">Edit</button>
-                    <button class="delete-btn" onclick="deleteRecord('borrower', '${borrower.id}')">Delete</button>
+                    <button class="edit-btn ${editDisabled}" onclick="editRecord('borrower', '${borrower.id}')" ${editDisabled ? 'disabled title="Cannot edit completed records"' : ''}>Edit</button>
+                    <button class="delete-btn ${deleteDisabled}" onclick="deleteRecord('borrower', '${borrower.id}')" ${deleteDisabled ? 'disabled title="Cannot delete completed records"' : ''}>Delete</button>
                 </td>
             </tr>
         `;
@@ -586,8 +607,11 @@ function updateDashboardTable() {
     
     // Add borrower activities
     Object.values(data.borrowers).forEach(borrower => {
+        // Ensure we have a valid date
+        let borrowerDate = borrower.disbursedDate || borrower.disbursed_date || new Date().toISOString().split('T')[0];
+        
         activities.push({
-            date: borrower.disbursedDate || new Date().toISOString().split('T')[0],
+            date: borrowerDate,
             applicationNo: borrower.applicationNo || 'N/A',
             employee: borrower.name,
             amount: `₹${borrower.amount}`,
@@ -596,11 +620,14 @@ function updateDashboardTable() {
             id: borrower.empId
         });
     });
-    
+
     // Add voucher activities
     Object.values(data.vouchers).forEach(voucher => {
+        // Ensure we have a valid date
+        let voucherDate = voucher.date || voucher.voucher_date || new Date().toISOString().split('T')[0];
+        
         activities.push({
-            date: voucher.date || new Date().toISOString().split('T')[0],
+            date: voucherDate,
             applicationNo: voucher.applicationNo || 'N/A',
             employee: voucher.empName,
             amount: `₹${voucher.amount}`,
@@ -608,9 +635,7 @@ function updateDashboardTable() {
             empId: voucher.empId,
             id: voucher.id
         });
-    });
-    
-    // Sort by date (newest first)
+    });    // Sort by date (newest first)
     activities.sort((a, b) => new Date(b.date) - new Date(a.date));
     
     if (activities.length === 0) {
@@ -620,9 +645,11 @@ function updateDashboardTable() {
     
     let html = '';
     activities.slice(0, 10).forEach(activity => { // Show only 10 recent activities
+        const formattedDate = convertDateFormat(activity.date);
+        
         html += `
             <tr>
-                <td>${formatDate(activity.date)}</td>
+                <td>${formattedDate}</td>
                 <td>${activity.applicationNo}</td>
                 <td>${activity.employee}</td>
                 <td>${activity.amount}</td>
@@ -2181,7 +2208,7 @@ function addRecord(type) {
                 </div>
                 <div class="form-group">
                     <label>Voucher No:</label>
-                    <input type="text" name="id" required placeholder="VCH-004">
+                    <input type="text" name="id" id="voucher-id" required placeholder="Enter voucher number ">
                 </div>
                 <div class="form-group">
                     <label>Voucher Date:</label>
@@ -2294,7 +2321,7 @@ function addRecord(type) {
         
         // Add event listeners for voucher form
         if (type === 'voucher') {
-            setTimeout(() => {
+            setTimeout(async () => {
                 const empIdInput = document.getElementById('voucher-empId');
                 const empNameInput = document.getElementById('voucher-empName');
                 const applicationNoSelect = document.getElementById('voucher-applicationNo');
@@ -2487,7 +2514,8 @@ function convertToExcel(records, type) {
             emi: record.emi,
             month: record.month,
             disbursedDate: record.disbursedDate,
-            entryDate: record.created_at || record.entryDate || new Date().toISOString().split('T')[0]
+            entryDate: record.created_at || record.entryDate || new Date().toISOString().split('T')[0],
+            status: record.status || 'active'
         }));
     } else if (type === 'employee') {
         // Ensure employee data follows the correct field order
@@ -2496,15 +2524,15 @@ function convertToExcel(records, type) {
             name: record.name
         }));
     } else if (type === 'voucher') {
-        // Ensure voucher data follows the correct field order with application number
+        // Ensure voucher data follows the Create New Voucher form field order
         orderedData = Object.values(records).map(record => ({
-            id: record.id,
-            applicationNo: record.applicationNo || '',
-            empId: record.empId,
-            empName: record.empName,
-            date: record.date,
-            amount: record.amount,
-            month: record.month
+            'Voucher No': record.id,
+            'Employee ID': record.empId,
+            'Employee Name': record.empName,
+            'Application Number': record.applicationNo || '',
+            'Voucher Date': record.date,
+            'Amount': record.amount,
+            'Month': record.month
         }));
     } else {
         // For other types, use as-is
@@ -2548,7 +2576,8 @@ function createMultiSheetWorkbook(allData) {
             emi: record.emi,
             month: record.month,
             disbursedDate: record.disbursedDate,
-            entryDate: record.created_at || record.entryDate || new Date().toISOString().split('T')[0]
+            entryDate: record.created_at || record.entryDate || new Date().toISOString().split('T')[0],
+            status: record.status || 'active'
         }));
         const borrowersWS = XLSX.utils.json_to_sheet(orderedBorrowers);
         XLSX.utils.book_append_sheet(workbook, borrowersWS, 'Borrowers');
@@ -2619,17 +2648,23 @@ function downloadTemplate() {
                 amount: 1000,
                 month: 5,
                 emi: 200,
-                disbursedDate: '01-08-2025'
+                disbursedDate: '01-08-2025',
+                status: 'active'
             }];
             break;
         case 'voucher':
+            const today = new Date();
+            const todayStr = `${String(today.getDate()).padStart(2, '0')}-${String(today.getMonth() + 1).padStart(2, '0')}-${today.getFullYear()}`;
+            
+            // Template matching Create New Voucher form field order and names
             templateData = [{
-                id: 'VCH-001',
-                empId: 'EMP001',
-                empName: 'John Doe',
-                date: '05-08-2025',
-                amount: 1000,
-                month: 'January'
+                'Voucher No': 'VCH-001',
+                'Employee ID': 'EMP001', 
+                'Employee Name': 'John Doe',
+                'Application Number': 'APP000001',
+                'Voucher Date': todayStr,
+                'Amount': 1000,
+                'Month': 'August'
             }];
             break;
     }
@@ -2853,37 +2888,51 @@ function validateVoucherData(data) {
     const hasMonth = firstRow.hasOwnProperty('month') || firstRow.hasOwnProperty('Month') || firstRow.hasOwnProperty('MONTH');
     
     if (!hasId) {
-        throw new Error('Excel file must contain an "id" or "Voucher No" column.');
+        throw new Error('Excel file must contain a "Voucher No" column (matching Create New Voucher form).');
     }
     if (!hasEmpId) {
-        throw new Error('Excel file must contain an "empId" or "Employee ID" column.');
+        throw new Error('Excel file must contain an "Employee ID" column (matching Create New Voucher form).');
     }
     if (!hasEmpName) {
-        throw new Error('Excel file must contain an "empName" or "Employee Name" column.');
+        throw new Error('Excel file must contain an "Employee Name" column (matching Create New Voucher form).');
     }
     if (!hasDate) {
-        throw new Error('Excel file must contain a "date" or "Voucher Date" column.');
+        throw new Error('Excel file must contain a "Voucher Date" column (matching Create New Voucher form).');
     }
     if (!hasAmount) {
-        throw new Error('Excel file must contain an "amount" column.');
+        throw new Error('Excel file must contain an "Amount" column (matching Create New Voucher form).');
     }
     if (!hasMonth) {
-        throw new Error('Excel file must contain a "month" column.');
+        throw new Error('Excel file must contain a "Month" column (matching Create New Voucher form).');
     }
     
-    // Normalize column names for consistency
+    // Normalize column names for consistency - matching Create New Voucher form field names
     data.forEach(row => {
+        // Voucher No field
         if (row.hasOwnProperty('ID')) row.id = row.ID;
         if (row.hasOwnProperty('Voucher No')) row.id = row['Voucher No'];
+        
+        // Employee ID field
         if (row.hasOwnProperty('Employee ID')) row.empId = row['Employee ID'];
         if (row.hasOwnProperty('employeeId')) row.empId = row.employeeId;
+        
+        // Employee Name field
+        if (row.hasOwnProperty('Employee Name')) row.empName = row['Employee Name'];
         if (row.hasOwnProperty('Employee Name')) row.empName = row['Employee Name'];
         if (row.hasOwnProperty('employeeName')) row.empName = row.employeeName;
-        if (row.hasOwnProperty('Application No')) row.applicationNo = row['Application No'];
+        
+        // Application Number field (optional)
+        if (row.hasOwnProperty('Application Number')) row.applicationNo = row['Application Number'];
         if (row.hasOwnProperty('applicationNo')) row.applicationNo = row.applicationNo;
+        
+        // Voucher Date field
         if (row.hasOwnProperty('Date')) row.date = row.Date;
         if (row.hasOwnProperty('Voucher Date')) row.date = row['Voucher Date'];
+        
+        // Amount field
         if (row.hasOwnProperty('Amount')) row.amount = row.Amount;
+        
+        // Month field
         if (row.hasOwnProperty('Month')) row.month = row.Month;
         if (row.hasOwnProperty('MONTH')) row.month = row.MONTH;
         
@@ -2999,7 +3048,7 @@ function importEmployeesToDatabase() {
             if (result.data && result.data.errors && result.data.errors.length > 0) {
                 console.warn('Import warnings:', result.data.errors);
                 // Show detailed error information if needed
-                const errorMessage = result.data.errors.slice(0, 5).join('\n');
+                let errorMessage = result.data.errors.slice(0, 5).join('\n');
                 if (result.data.errors.length > 5) {
                     errorMessage += `\n... and ${result.data.errors.length - 5} more errors`;
                 }
@@ -3014,12 +3063,31 @@ function importEmployeesToDatabase() {
             renderEmployeeTable();
             loadDashboardStats();
         } else {
-            showNotification(result.message || 'Error importing employees', 'error');
+            // Handle different types of errors
+            const errorMessage = result.message || 'Error importing employees';
+            const errorData = result.data || {};
+            
+            if (errorData.errorType === 'database') {
+                let detailedMessage = `❌ Database Error:\n${errorMessage}\n\n`;
+                detailedMessage += '💡 Suggestions:\n';
+                detailedMessage += '• Check employee ID format and uniqueness\n';
+                detailedMessage += '• Ensure employee names are not too long\n';
+                detailedMessage += '• Try importing smaller batches';
+                
+                alert(detailedMessage);
+            }
+            showNotification(errorMessage, 'error');
         }
     })
     .catch(error => {
         console.error('Import error:', error);
-        showNotification('Network error occurred during import', 'error');
+        
+        let errorMessage = 'Employee import failed';
+        if (error.message.includes('HTTP error') || error.message.includes('Failed to fetch')) {
+            errorMessage = 'Connection error during employee import';
+        }
+        
+        showNotification(errorMessage, 'error');
     })
     .finally(() => {
         // Restore button state
@@ -3077,7 +3145,7 @@ function importBorrowersToDatabase() {
             
             if (result.data && result.data.errors && result.data.errors.length > 0) {
                 console.warn('Import warnings:', result.data.errors);
-                const errorMessage = result.data.errors.slice(0, 5).join('\n');
+                let errorMessage = result.data.errors.slice(0, 5).join('\n');
                 if (result.data.errors.length > 5) {
                     errorMessage += `\n... and ${result.data.errors.length - 5} more errors`;
                 }
@@ -3092,12 +3160,32 @@ function importBorrowersToDatabase() {
             renderBorrowerTable();
             loadDashboardStats();
         } else {
-            showNotification(result.message || 'Error importing borrowers', 'error');
+            // Handle different types of errors
+            const errorMessage = result.message || 'Error importing borrowers';
+            const errorData = result.data || {};
+            
+            if (errorData.errorType === 'database') {
+                let detailedMessage = `❌ Database Error:\n${errorMessage}\n\n`;
+                detailedMessage += '💡 Suggestions:\n';
+                detailedMessage += '• Check application number uniqueness\n';
+                detailedMessage += '• Verify employee IDs exist\n';
+                detailedMessage += '• Check amount and date formats\n';
+                detailedMessage += '• Try importing smaller batches';
+                
+                alert(detailedMessage);
+            }
+            showNotification(errorMessage, 'error');
         }
     })
     .catch(error => {
         console.error('Import error:', error);
-        showNotification('Network error occurred during import', 'error');
+        
+        let errorMessage = 'Borrower import failed';
+        if (error.message.includes('HTTP error') || error.message.includes('Failed to fetch')) {
+            errorMessage = 'Connection error during borrower import';
+        }
+        
+        showNotification(errorMessage, 'error');
     })
     .finally(() => {
         // Restore button state
@@ -3115,15 +3203,18 @@ function importVouchersToDatabase() {
         return;
     }
     
-    // Prepare voucher data
-    const vouchers = importPreviewData.map(voucher => ({
-        id: voucher.id,
-        empId: voucher.empId,
-        empName: voucher.empName,
-        date: voucher.date,
-        amount: voucher.amount,
-        month: voucher.month
-    }));
+    // Prepare voucher data including application number for borrower reduction
+    const vouchers = importPreviewData.map((voucher) => {
+        return {
+            id: voucher.id, // Use the voucher ID as provided
+            empId: voucher.empId,
+            empName: voucher.empName,
+            applicationNo: voucher.applicationNo || '', // Include application number
+            date: voucher.date,
+            amount: voucher.amount,
+            month: voucher.month
+        };
+    });
     
     // Show loading state
     const confirmBtn = document.getElementById('confirmImportBtn');
@@ -3148,16 +3239,48 @@ function importVouchersToDatabase() {
     })
     .then(result => {
         if (result.success) {
-            showNotification(result.message, 'success');
+            let successMessage = result.message;
+            
+            // Add borrower update information if available
+            if (result.data && result.data.borrowerUpdateCount > 0) {
+                successMessage += `\n💰 ${result.data.borrowerUpdateCount} borrower accounts automatically updated with advance repayments!`;
+            }
+            
+            showNotification(successMessage, 'success');
             
             if (result.data && result.data.errors && result.data.errors.length > 0) {
                 console.warn('Import warnings:', result.data.errors);
-                const errorMessage = result.data.errors.slice(0, 5).join('\n');
-                if (result.data.errors.length > 5) {
-                    errorMessage += `\n... and ${result.data.errors.length - 5} more errors`;
+                
+                // Categorize errors for better user understanding
+                const employeeErrors = result.data.errors.filter(err => err.includes('not found'));
+                const fieldErrors = result.data.errors.filter(err => err.includes('required'));
+                const otherErrors = result.data.errors.filter(err => 
+                    !err.includes('not found') && 
+                    !err.includes('required')
+                );
+                
+                let errorMessage = 'Some records had issues:\n\n';
+                
+                if (employeeErrors.length > 0) {
+                    errorMessage += `👤 Missing Employees (${employeeErrors.length}):\n`;
+                    errorMessage += 'Tip: Ensure all employees exist before importing vouchers\n\n';
                 }
+                
+                if (fieldErrors.length > 0) {
+                    errorMessage += `📝 Missing Required Fields (${fieldErrors.length}):\n`;
+                    errorMessage += 'Tip: Check the template for required columns\n\n';
+                }
+                
+                if (otherErrors.length > 0) {
+                    errorMessage += `⚠️ Other Issues (${otherErrors.length}):\n`;
+                    errorMessage += otherErrors.slice(0, 3).join('\n');
+                    if (otherErrors.length > 3) {
+                        errorMessage += `\n... and ${otherErrors.length - 3} more`;
+                    }
+                }
+                
                 setTimeout(() => {
-                    alert('Some records had issues:\n' + errorMessage);
+                    alert(errorMessage);
                 }, 1000);
             }
             
@@ -3167,12 +3290,70 @@ function importVouchersToDatabase() {
             renderVoucherTable();
             loadDashboardStats();
         } else {
-            showNotification(result.message || 'Error importing vouchers', 'error');
+            // Handle different types of errors
+            const errorMessage = result.message || 'Error importing vouchers';
+            const errorData = result.data || {};
+            
+            if (errorData.errorType === 'database') {
+                // Database-specific error handling
+                let detailedMessage = `❌ Database Error:\n${errorMessage}\n\n`;
+                
+                if (errorData.errorCode) {
+                    detailedMessage += `Error Code: ${errorData.errorCode}\n`;
+                }
+                
+                if (errorData.timestamp) {
+                    detailedMessage += `Time: ${errorData.timestamp}\n`;
+                }
+                
+                detailedMessage += '\n💡 Suggestions:\n';
+                detailedMessage += '• Check your import data format\n';
+                detailedMessage += '• Ensure all employees exist\n';
+                detailedMessage += '• Try importing smaller batches\n';
+                detailedMessage += '• Contact support if problem persists';
+                
+                alert(detailedMessage);
+                showNotification(errorMessage, 'error');
+            } else {
+                // Generic error handling
+                showNotification(errorMessage, 'error');
+            }
         }
     })
     .catch(error => {
         console.error('Import error:', error);
-        showNotification('Network error occurred during import', 'error');
+        
+        let errorMessage = 'Import failed';
+        let detailedMessage = '';
+        
+        if (error.message.includes('HTTP error')) {
+            errorMessage = 'Server communication error';
+            detailedMessage = `❌ Server Error:\nUnable to communicate with server (${error.message})\n\n`;
+            detailedMessage += '💡 Suggestions:\n';
+            detailedMessage += '• Check your internet connection\n';
+            detailedMessage += '• Verify XAMPP server is running\n';
+            detailedMessage += '• Try refreshing the page\n';
+            detailedMessage += '• Check import file size (may be too large)';
+        } else if (error.message.includes('Failed to fetch')) {
+            errorMessage = 'Network connection error';
+            detailedMessage = `❌ Network Error:\nUnable to reach the server\n\n`;
+            detailedMessage += '💡 Suggestions:\n';
+            detailedMessage += '• Check your internet connection\n';
+            detailedMessage += '• Ensure XAMPP Apache server is running\n';
+            detailedMessage += '• Try refreshing the page';
+        } else {
+            errorMessage = 'Unexpected error occurred during import';
+            detailedMessage = `❌ Unexpected Error:\n${error.message}\n\n`;
+            detailedMessage += '💡 Suggestion:\n';
+            detailedMessage += '• Try refreshing the page and importing again\n';
+            detailedMessage += '• Check browser console for more details';
+        }
+        
+        if (detailedMessage) {
+            alert(detailedMessage);
+        }
+        
+        showNotification(errorMessage, 'error');
     })
     .finally(() => {
         // Restore button state
@@ -3578,6 +3759,19 @@ document.addEventListener('DOMContentLoaded', function() {
             filterEmployeeTable(this.value);
         });
     }
+    
+    // Change password form handler
+    const changePasswordForm = document.getElementById('changePasswordForm');
+    if (changePasswordForm) {
+        changePasswordForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            changePassword();
+        });
+    }
+    
+    // Initialize settings
+    loadSettings();
+    setupAutoSave();
 });
 
 /**
@@ -3616,4 +3810,339 @@ function filterEmployeeTable(searchTerm) {
     });
     
     tbody.innerHTML = html;
+}
+
+// ========================================
+// Settings Functions
+// ========================================
+
+/**
+ * Load settings from localStorage or set defaults
+ */
+function loadSettings() {
+    const defaultSettings = {
+        appName: 'Advance Portal',
+        recordsPerPage: 25,
+        autoSave: true,
+        darkMode: false,
+        defaultCurrency: 'INR',
+        dateFormat: 'DD-MM-YYYY',
+        autoCalculateEMI: true,
+        userEmail: 'admin@example.com',
+        autoBackup: false,
+        backupRetention: 30,
+        exportFormat: 'xlsx'
+    };
+
+    const savedSettings = localStorage.getItem('advancePortalSettings');
+    const settings = savedSettings ? { ...defaultSettings, ...JSON.parse(savedSettings) } : defaultSettings;
+
+    // Apply settings to form elements
+    Object.keys(settings).forEach(key => {
+        const element = document.getElementById(key);
+        if (element) {
+            if (element.type === 'checkbox') {
+                element.checked = settings[key];
+            } else {
+                element.value = settings[key];
+            }
+        }
+    });
+
+    // Apply dark mode if enabled
+    if (settings.darkMode) {
+        document.body.classList.add('dark-mode');
+    }
+
+    // Load system information
+    loadSystemInfo();
+
+    return settings;
+}
+
+/**
+ * Save all settings to localStorage
+ */
+function saveAllSettings() {
+    const settings = {};
+    const settingElements = document.querySelectorAll('#settings-content input, #settings-content select');
+    
+    settingElements.forEach(element => {
+        if (element.type === 'checkbox') {
+            settings[element.name] = element.checked;
+        } else {
+            settings[element.name] = element.value;
+        }
+    });
+
+    // Save to localStorage
+    localStorage.setItem('advancePortalSettings', JSON.stringify(settings));
+
+    // Apply dark mode immediately
+    if (settings.darkMode) {
+        document.body.classList.add('dark-mode');
+    } else {
+        document.body.classList.remove('dark-mode');
+    }
+
+    // Update app name in header
+    const logoSection = document.querySelector('.logo-section h2');
+    if (logoSection && settings.appName) {
+        logoSection.textContent = settings.appName;
+    }
+
+    showNotification('Settings saved successfully!', 'success');
+}
+
+/**
+ * Reset all settings to defaults
+ */
+function resetToDefaults() {
+    if (confirm('Are you sure you want to reset all settings to their default values? This action cannot be undone.')) {
+        localStorage.removeItem('advancePortalSettings');
+        loadSettings();
+        showNotification('Settings reset to defaults successfully!', 'info');
+    }
+}
+
+/**
+ * Load system information
+ */
+function loadSystemInfo() {
+    // Update last login
+    const lastLoginElement = document.getElementById('lastLogin');
+    if (lastLoginElement) {
+        const lastLogin = localStorage.getItem('lastLogin') || 'First time login';
+        lastLoginElement.textContent = lastLogin;
+    }
+
+    // Update current login time
+    const now = new Date().toLocaleString();
+    localStorage.setItem('lastLogin', now);
+
+    // Calculate total records
+    const totalRecordsElement = document.getElementById('totalRecords');
+    if (totalRecordsElement) {
+        const employeeCount = Object.keys(data.employees).length;
+        const borrowerCount = Object.keys(data.borrowers).length;
+        const voucherCount = Object.keys(data.vouchers).length;
+        const total = employeeCount + borrowerCount + voucherCount;
+        totalRecordsElement.textContent = `${total} (${employeeCount} employees, ${borrowerCount} borrowers, ${voucherCount} vouchers)`;
+    }
+
+    // Simulate database version and size
+    const dbVersionElement = document.getElementById('dbVersion');
+    if (dbVersionElement) {
+        dbVersionElement.textContent = 'MySQL 8.0.x';
+    }
+
+    const dbSizeElement = document.getElementById('dbSize');
+    if (dbSizeElement) {
+        // Estimate database size based on records
+        const estimatedSize = (Object.keys(data.employees).length * 0.1 + 
+                              Object.keys(data.borrowers).length * 0.2 + 
+                              Object.keys(data.vouchers).length * 0.15).toFixed(1);
+        dbSizeElement.textContent = `~${estimatedSize} MB`;
+    }
+}
+
+/**
+ * Open change password modal
+ */
+function openChangePasswordModal() {
+    openModal('changePasswordModal');
+    // Clear any previous values
+    document.getElementById('oldPassword').value = '';
+    document.getElementById('newPassword').value = '';
+    document.getElementById('confirmPassword').value = '';
+}
+
+/**
+ * Change password functionality
+ */
+async function changePassword() {
+    const oldPassword = document.getElementById('oldPassword').value;
+    const newPassword = document.getElementById('newPassword').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
+    
+    // Validation
+    if (!oldPassword || !newPassword || !confirmPassword) {
+        showNotification('All fields are required!', 'error');
+        return false;
+    }
+    
+    if (newPassword.length < 6) {
+        showNotification('New password must be at least 6 characters long!', 'error');
+        return false;
+    }
+    
+    if (newPassword !== confirmPassword) {
+        showNotification('New passwords do not match!', 'error');
+        return false;
+    }
+    
+    try {
+        showNotification('Changing password...', 'info');
+        
+        const response = await fetch('api.php?action=change_password', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                current_password: oldPassword,
+                new_password: newPassword,
+                confirm_password: confirmPassword
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showNotification('Password changed successfully!', 'success');
+            closeModal('changePasswordModal');
+            
+            // Clear the form
+            document.getElementById('oldPassword').value = '';
+            document.getElementById('newPassword').value = '';
+            document.getElementById('confirmPassword').value = '';
+        } else {
+            showNotification(result.message || 'Failed to change password', 'error');
+        }
+    } catch (error) {
+        console.error('Password change error:', error);
+        showNotification('An error occurred while changing password', 'error');
+    }
+    
+    return true;
+}
+
+/**
+ * Update user email
+ */
+async function updateEmail() {
+    const emailInput = document.getElementById('userEmail');
+    const newEmail = emailInput.value.trim();
+    
+    if (!newEmail) {
+        showNotification('Email is required', 'error');
+        return;
+    }
+    
+    if (!isValidEmail(newEmail)) {
+        showNotification('Please enter a valid email address', 'error');
+        return;
+    }
+    
+    try {
+        showNotification('Updating email...', 'info');
+        
+        const response = await fetch('api.php?action=update_email', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                email: newEmail
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showNotification('Email updated successfully!', 'success');
+            // Update the display if needed
+            if (result.data && result.data.email) {
+                emailInput.value = result.data.email;
+            }
+        } else {
+            showNotification(result.message || 'Failed to update email', 'error');
+        }
+    } catch (error) {
+        console.error('Email update error:', error);
+        showNotification('An error occurred while updating email', 'error');
+    }
+}
+
+/**
+ * Validate email format
+ */
+function isValidEmail(email) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+}
+
+/**
+ * Initialize email change tracking
+ */
+function initializeEmailTracking() {
+    const emailInput = document.getElementById('userEmail');
+    if (emailInput) {
+        const originalEmail = emailInput.value;
+        
+        emailInput.addEventListener('input', function() {
+            const saveButton = this.parentElement.querySelector('button');
+            if (this.value !== originalEmail && this.value.trim() !== '') {
+                saveButton.style.backgroundColor = '#ff6b35';
+                saveButton.textContent = '💾 Save Changes';
+            } else {
+                saveButton.style.backgroundColor = '';
+                saveButton.textContent = '💾 Save';
+            }
+        });
+    }
+}
+
+// Initialize email tracking when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+    initializeEmailTracking();
+});
+
+/**
+ * Create backup functionality
+ */
+function createBackup() {
+    try {
+        const backupData = {
+            timestamp: new Date().toISOString(),
+            version: '1.0.0',
+            data: {
+                employees: data.employees,
+                borrowers: data.borrowers,
+                vouchers: data.vouchers
+            },
+            settings: JSON.parse(localStorage.getItem('advancePortalSettings') || '{}')
+        };
+
+        const dataStr = JSON.stringify(backupData, null, 2);
+        const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+        
+        const exportFileDefaultName = `advance_portal_backup_${new Date().toISOString().split('T')[0]}.json`;
+        
+        const linkElement = document.createElement('a');
+        linkElement.setAttribute('href', dataUri);
+        linkElement.setAttribute('download', exportFileDefaultName);
+        linkElement.click();
+        
+        showNotification('Backup created and downloaded successfully!', 'success');
+    } catch (error) {
+        console.error('Backup creation failed:', error);
+        showNotification('Failed to create backup. Please try again.', 'error');
+    }
+}
+
+/**
+ * Auto-save settings when changed
+ */
+function setupAutoSave() {
+    const settingElements = document.querySelectorAll('#settings-content input, #settings-content select');
+    
+    settingElements.forEach(element => {
+        element.addEventListener('change', function() {
+            const autoSaveEnabled = document.getElementById('autoSave')?.checked;
+            if (autoSaveEnabled) {
+                saveAllSettings();
+            }
+        });
+    });
 }

@@ -74,6 +74,20 @@ body {
     margin-left: auto;
     margin-right: 0;
     cursor: pointer;
+    padding: 5px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.input-icon.right:hover {
+    background-color: rgba(33, 150, 243, 0.1);
+}
+
+.input-icon.right:active {
+    transform: scale(0.95);
 }
 
 .input-group input {

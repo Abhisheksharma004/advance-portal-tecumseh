@@ -197,6 +197,22 @@ try {
             }
             break;
             
+        case 'update_email':
+            if ($method === 'POST') {
+                updateUserEmail();
+            } else {
+                sendJsonResponse(false, 'Method not allowed');
+            }
+            break;
+            
+        case 'change_password':
+            if ($method === 'POST') {
+                changeUserPassword();
+            } else {
+                sendJsonResponse(false, 'Method not allowed');
+            }
+            break;
+            
         default:
             sendJsonResponse(false, 'Invalid action');
     }
@@ -231,7 +247,9 @@ function getEmployees() {
  */
 function getBorrowers() {
     $pdo = getDB();
-    $stmt = $pdo->query("SELECT * FROM borrowers WHERE status = 'active' ORDER BY created_at DESC");
+    // Include both active and completed borrowers to show completion status
+    $stmt = $pdo->query("SELECT * FROM borrowers WHERE status IN ('active', 'completed') ORDER BY 
+        CASE WHEN status = 'active' THEN 1 ELSE 2 END, created_at DESC");
     $borrowers = $stmt->fetchAll();
     
     // Convert to the format expected by the frontend - now using unique ID as key
@@ -560,6 +578,15 @@ function addVoucher() {
     try {
         // Begin transaction for data consistency
         $pdo->beginTransaction();
+        
+        // Check if employee exists
+        $stmt = $pdo->prepare("SELECT id FROM employees WHERE id = ?");
+        $stmt->execute([$empId]);
+        if (!$stmt->fetch()) {
+            $pdo->rollBack();
+            sendJsonResponse(false, "Employee ID '$empId' not found. Please verify the employee ID.");
+            return;
+        }
         
         // Insert new voucher with application number
         $stmt = $pdo->prepare("INSERT INTO vouchers (id, emp_id, emp_name, voucher_date, amount, month, application_no) VALUES (?, ?, ?, ?, ?, ?, ?)");
@@ -979,8 +1006,25 @@ function importEmployees() {
     } catch(PDOException $e) {
         // Rollback transaction on error
         $pdo->rollback();
+        
+        // Log the full error for debugging
         error_log("Import employees error: " . $e->getMessage());
-        sendJsonResponse(false, 'Database error occurred during import');
+        
+        // Provide user-friendly error message
+        $userMessage = 'Database error occurred during employee import';
+        $errorMessage = $e->getMessage();
+        
+        if (strpos($errorMessage, 'Duplicate entry') !== false) {
+            $userMessage = 'Duplicate employee ID found - employee IDs must be unique';
+        } elseif (strpos($errorMessage, 'Data too long') !== false) {
+            $userMessage = 'Employee name or ID too long for database fields';
+        }
+        
+        sendJsonResponse(false, $userMessage, [
+            'errorType' => 'database',
+            'errorCode' => $e->getCode(),
+            'timestamp' => date('Y-m-d H:i:s')
+        ]);
     }
 }
 
@@ -1094,8 +1138,33 @@ function importBorrowers() {
     } catch(PDOException $e) {
         // Rollback transaction on error
         $pdo->rollback();
+        
+        // Log the full error for debugging
         error_log("Import borrowers error: " . $e->getMessage());
-        sendJsonResponse(false, 'Database error occurred during import');
+        
+        // Provide user-friendly error message
+        $userMessage = 'Database error occurred during borrower import';
+        $errorMessage = $e->getMessage();
+        
+        if (strpos($errorMessage, 'Duplicate entry') !== false) {
+            if (strpos($errorMessage, 'application_no') !== false) {
+                $userMessage = 'Duplicate application number found - application numbers must be unique';
+            } else {
+                $userMessage = 'Duplicate entry found in borrower data';
+            }
+        } elseif (strpos($errorMessage, 'foreign key constraint') !== false) {
+            $userMessage = 'Invalid employee reference - ensure all employee IDs exist before importing borrowers';
+        } elseif (strpos($errorMessage, 'Incorrect decimal') !== false) {
+            $userMessage = 'Invalid amount format - please check amount, EMI values are numeric';
+        } elseif (strpos($errorMessage, 'Incorrect date') !== false) {
+            $userMessage = 'Invalid date format - please check disbursed date format (YYYY-MM-DD)';
+        }
+        
+        sendJsonResponse(false, $userMessage, [
+            'errorType' => 'database',
+            'errorCode' => $e->getCode(),
+            'timestamp' => date('Y-m-d H:i:s')
+        ]);
     }
 }
 
@@ -1117,6 +1186,7 @@ function importVouchers() {
     $vouchers = $data['vouchers'];
     $successCount = 0;
     $errorCount = 0;
+    $borrowerUpdateCount = 0;
     $errors = [];
     
     try {
@@ -1138,15 +1208,7 @@ function importVouchers() {
             $date = convertDateToYYYYMMDD($voucher['date']);
             $amount = floatval($voucher['amount']);
             $month = trim($voucher['month']);
-            
-            // Check if voucher ID already exists
-            $stmt = $pdo->prepare("SELECT id FROM vouchers WHERE id = ?");
-            $stmt->execute([$id]);
-            if ($stmt->fetch()) {
-                $errors[] = "Row " . ($index + 1) . ": Voucher ID '$id' already exists";
-                $errorCount++;
-                continue;
-            }
+            $applicationNo = isset($voucher['applicationNo']) ? trim($voucher['applicationNo']) : '';
             
             // Check if employee exists
             $stmt = $pdo->prepare("SELECT id FROM employees WHERE id = ?");
@@ -1157,10 +1219,48 @@ function importVouchers() {
                 continue;
             }
             
-            // Insert voucher
-            $stmt = $pdo->prepare("INSERT INTO vouchers (id, emp_id, emp_name, voucher_date, amount, month) VALUES (?, ?, ?, ?, ?, ?)");
-            if ($stmt->execute([$id, $empId, $empName, $date, $amount, $month])) {
+            // If application number is provided, validate and prepare for borrower update
+            $borrowerUpdate = null;
+            if (!empty($applicationNo)) {
+                // Check if borrower record exists and is active
+                $borrowerStmt = $pdo->prepare("SELECT id, amount, outstanding_amount FROM borrowers WHERE application_no = ? AND status = 'active'");
+                $borrowerStmt->execute([$applicationNo]);
+                $borrower = $borrowerStmt->fetch();
+                
+                if ($borrower) {
+                    $newOutstanding = $borrower['outstanding_amount'] - $amount;
+                    // Ensure outstanding amount doesn't go below 0
+                    $newOutstanding = max(0, $newOutstanding);
+                    
+                    $borrowerUpdate = [
+                        'id' => $borrower['id'],
+                        'oldOutstanding' => $borrower['outstanding_amount'],
+                        'newOutstanding' => $newOutstanding,
+                        'applicationNo' => $applicationNo
+                    ];
+                } else {
+                    // Warning but don't fail - application number might be invalid or borrower completed
+                    $errors[] = "Row " . ($index + 1) . ": Warning - Application number '$applicationNo' not found or borrower not active";
+                }
+            }
+            
+            // Insert voucher with application number
+            $stmt = $pdo->prepare("INSERT INTO vouchers (id, emp_id, emp_name, voucher_date, amount, month, application_no) VALUES (?, ?, ?, ?, ?, ?, ?)");
+            if ($stmt->execute([$id, $empId, $empName, $date, $amount, $month, $applicationNo])) {
                 $successCount++;
+                
+                // Update borrower outstanding amount if application number was provided and found
+                if ($borrowerUpdate) {
+                    $updateStmt = $pdo->prepare("UPDATE borrowers SET outstanding_amount = ? WHERE id = ?");
+                    if ($updateStmt->execute([$borrowerUpdate['newOutstanding'], $borrowerUpdate['id']])) {
+                        $borrowerUpdateCount++;
+                        // Check if borrower should be marked as completed
+                        if ($borrowerUpdate['newOutstanding'] == 0) {
+                            $statusStmt = $pdo->prepare("UPDATE borrowers SET status = 'completed' WHERE id = ?");
+                            $statusStmt->execute([$borrowerUpdate['id']]);
+                        }
+                    }
+                }
             } else {
                 $errors[] = "Row " . ($index + 1) . ": Failed to insert voucher '$id'";
                 $errorCount++;
@@ -1171,12 +1271,16 @@ function importVouchers() {
         $pdo->commit();
         
         $message = "Import completed: $successCount vouchers imported";
+        if ($borrowerUpdateCount > 0) {
+            $message .= ", $borrowerUpdateCount borrower amounts updated";
+        }
         if ($errorCount > 0) {
             $message .= ", $errorCount errors occurred";
         }
         
         sendJsonResponse(true, $message, [
             'successCount' => $successCount,
+            'borrowerUpdateCount' => $borrowerUpdateCount,
             'errorCount' => $errorCount,
             'errors' => $errors
         ]);
@@ -1184,8 +1288,202 @@ function importVouchers() {
     } catch(PDOException $e) {
         // Rollback transaction on error
         $pdo->rollback();
+        
+        // Log the full error for debugging
         error_log("Import vouchers error: " . $e->getMessage());
-        sendJsonResponse(false, 'Database error occurred during import');
+        
+        // Provide user-friendly error message based on error type
+        $userMessage = 'Database error occurred during import';
+        $errorCode = $e->getCode();
+        $errorMessage = $e->getMessage();
+        
+        // Handle specific database errors
+        if (strpos($errorMessage, 'Duplicate entry') !== false) {
+            $userMessage = 'Duplicate entry found - some voucher data already exists';
+        } elseif (strpos($errorMessage, 'foreign key constraint') !== false || strpos($errorMessage, 'Cannot add or update') !== false) {
+            $userMessage = 'Invalid employee reference - please ensure all employees exist';
+        } elseif (strpos($errorMessage, 'Data too long') !== false) {
+            $userMessage = 'Some data values are too long for database fields';
+        } elseif (strpos($errorMessage, 'Incorrect date') !== false || strpos($errorMessage, 'Invalid date') !== false) {
+            $userMessage = 'Invalid date format detected in import data';
+        } elseif (strpos($errorMessage, 'Incorrect decimal') !== false) {
+            $userMessage = 'Invalid amount format detected in import data';
+        } elseif (strpos($errorMessage, 'server has gone away') !== false) {
+            $userMessage = 'Database connection lost - please try importing smaller batches';
+        } elseif (strpos($errorMessage, 'Lock wait timeout') !== false) {
+            $userMessage = 'Database is busy - please try again in a moment';
+        }
+        
+        sendJsonResponse(false, $userMessage, [
+            'errorType' => 'database',
+            'errorCode' => $errorCode,
+            'timestamp' => date('Y-m-d H:i:s')
+        ]);
     }
+}
+
+// Function to update user email
+function updateUserEmail() {
+    // Try to get data from both JSON and POST
+    $data = getPostData();
+    if (empty($data)) {
+        $data = $_POST;
+    }
+    
+    $newEmail = trim($data['email'] ?? '');
+    
+    // Debug logging
+    error_log("Email update request - User ID: " . ($_SESSION['user_id'] ?? 'not set') . ", New Email: " . $newEmail);
+    error_log("Raw POST data: " . print_r($_POST, true));
+    error_log("JSON data: " . print_r($data, true));
+    
+    // Validate input
+    if (empty($newEmail)) {
+        sendJsonResponse(false, 'Email is required');
+        return;
+    }
+    
+    if (!filter_var($newEmail, FILTER_VALIDATE_EMAIL)) {
+        sendJsonResponse(false, 'Invalid email format');
+        return;
+    }
+    
+    $pdo = getDB();
+    if (!$pdo) {
+        sendJsonResponse(false, 'Database connection failed');
+        return;
+    }
+    
+    try {
+        // Debug: Check current email before update
+        $currentStmt = $pdo->prepare("SELECT email FROM users WHERE id = ?");
+        $currentStmt->execute([$_SESSION['user_id']]);
+        $currentUser = $currentStmt->fetch();
+        error_log("Current email in DB: " . ($currentUser['email'] ?? 'not found'));
+        
+        // Check if email already exists
+        $checkStmt = $pdo->prepare("SELECT id FROM users WHERE email = ? AND id != ?");
+        $checkStmt->execute([$newEmail, $_SESSION['user_id']]);
+        
+        if ($checkStmt->fetch()) {
+            sendJsonResponse(false, 'Email address already exists');
+            return;
+        }
+        
+        // Update email
+        $updateStmt = $pdo->prepare("UPDATE users SET email = ? WHERE id = ?");
+        $result = $updateStmt->execute([$newEmail, $_SESSION['user_id']]);
+        
+        // Debug: Check if update was successful
+        error_log("Update result: " . ($result ? 'true' : 'false'));
+        error_log("Rows affected: " . $updateStmt->rowCount());
+        
+        if ($result && $updateStmt->rowCount() > 0) {
+            // Verify the update in database
+            $verifyStmt = $pdo->prepare("SELECT email FROM users WHERE id = ?");
+            $verifyStmt->execute([$_SESSION['user_id']]);
+            $updatedUser = $verifyStmt->fetch();
+            error_log("Email after update in DB: " . ($updatedUser['email'] ?? 'not found'));
+            
+            // Update session
+            $_SESSION['user_email'] = $newEmail;
+            error_log("Email updated successfully for user ID: " . $_SESSION['user_id']);
+            sendJsonResponse(true, 'Email updated successfully', ['email' => $newEmail]);
+        } else {
+            error_log("Failed to execute email update query or no rows affected");
+            sendJsonResponse(false, 'Failed to update email - no changes made');
+        }
+        
+    } catch (Exception $e) {
+        error_log("Email update error: " . $e->getMessage());
+        sendJsonResponse(false, 'An error occurred while updating email');
+    }
+}
+
+// Function to change user password
+function changeUserPassword() {
+    $data = getPostData();
+    $currentPassword = $data['current_password'] ?? '';
+    $newPassword = $data['new_password'] ?? '';
+    $confirmPassword = $data['confirm_password'] ?? '';
+    
+    // Debug logging
+    error_log("Password change request - User ID: " . ($_SESSION['user_id'] ?? 'not set'));
+    
+    // Validate input
+    if (empty($currentPassword) || empty($newPassword) || empty($confirmPassword)) {
+        sendJsonResponse(false, 'All password fields are required');
+        return;
+    }
+    
+    if ($newPassword !== $confirmPassword) {
+        sendJsonResponse(false, 'New passwords do not match');
+        return;
+    }
+    
+    if (strlen($newPassword) < 6) {
+        sendJsonResponse(false, 'New password must be at least 6 characters long');
+        return;
+    }
+    
+    $pdo = getDB();
+    if (!$pdo) {
+        sendJsonResponse(false, 'Database connection failed');
+        return;
+    }
+    
+    try {
+        // Get current password hash
+        $stmt = $pdo->prepare("SELECT password FROM users WHERE id = ?");
+        $stmt->execute([$_SESSION['user_id']]);
+        $user = $stmt->fetch();
+        
+        if (!$user) {
+            sendJsonResponse(false, 'User not found');
+            return;
+        }
+        
+        // Verify current password
+        if (!password_verify($currentPassword, $user['password'])) {
+            sendJsonResponse(false, 'Current password is incorrect');
+            return;
+        }
+        
+        // Hash new password
+        $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
+        
+        // Update password
+        $updateStmt = $pdo->prepare("UPDATE users SET password = ? WHERE id = ?");
+        
+        if ($updateStmt->execute([$hashedPassword, $_SESSION['user_id']])) {
+            error_log("Password updated successfully for user ID: " . $_SESSION['user_id']);
+            sendJsonResponse(true, 'Password changed successfully');
+        } else {
+            error_log("Failed to execute password update query");
+            sendJsonResponse(false, 'Failed to update password');
+        }
+        
+    } catch (Exception $e) {
+        error_log("Password change error: " . $e->getMessage());
+        sendJsonResponse(false, 'An error occurred while changing password');
+    }
+}
+
+// Helper function to get POST data from JSON
+function getPostData() {
+    $input = file_get_contents('php://input');
+    
+    if (empty($input)) {
+        return [];
+    }
+    
+    $data = json_decode($input, true);
+    
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        error_log("JSON decode error: " . json_last_error_msg());
+        return [];
+    }
+    
+    return $data ?: [];
 }
 ?>

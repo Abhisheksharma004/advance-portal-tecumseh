@@ -83,6 +83,19 @@ try {
         }
     }
     
+    // Remove unique constraint from vouchers table if it exists
+    try {
+        $pdo->exec("ALTER TABLE vouchers DROP INDEX unique_voucher_id");
+        echo "<p>✓ Removed unique constraint from voucher ID - duplicate vouchers now allowed</p>";
+    } catch (PDOException $e) {
+        // Constraint might not exist, which is fine
+        if (strpos($e->getMessage(), 'check that column/key exists') === false) {
+            echo "<p>ℹ️ Voucher ID constraint removal: " . $e->getMessage() . "</p>";
+        } else {
+            echo "<p>✓ Voucher ID unique constraint was not present</p>";
+        }
+    }
+    
     // Insert default admin user if not exists
     $stmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE email = 'admin@tecumseh.com'");
     $stmt->execute();
