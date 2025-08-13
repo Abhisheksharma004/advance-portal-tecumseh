@@ -38,7 +38,7 @@ A comprehensive web application for managing employee advance payments, borrower
    - Navigate to: `http://localhost/advance-portal-main/`
    - Login with default credentials:
      - **Username**: admin@tecumseh.com
-     - **Password**: admin123
+     - **Password**: admin
 
 ## 📁 Project Structure
 
@@ -168,3 +168,4 @@ This project is for internal use at Tecumseh. All rights reserved.
 ---
 
 **Note**: This application is designed for local development and testing. For production deployment, additional security measures and server configuration would be required.
+
