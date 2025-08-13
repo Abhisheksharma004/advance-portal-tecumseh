@@ -96,6 +96,13 @@ $currentUser = getCurrentUser();
                     </a>
                 </li>
             </ul>
+            
+            <!-- Logo at bottom of sidebar -->
+            <div class="sidebar-logo">
+               <a href="https://www.virosentrepreneurs.com" target="_blank">
+                   <img src="logo.png" alt="Tecumseh Logo" class="sidebar-logo-img">
+               </a>
+            </div>
         </aside>
 
         <main class="main-content">
@@ -239,7 +246,7 @@ $currentUser = getCurrentUser();
                         <thead>
                             <tr>
                                 <th>Application No</th>
-                                <th>Employee ID</th>
+                                <th style="background-color: #e3f2fd; color: #1976d2; font-weight: bold;">Employee ID</th>
                                 <th>Name</th>
                                 <th>Advance Amount</th>
                                 <th>Outstanding Amount</th>
@@ -282,7 +289,7 @@ $currentUser = getCurrentUser();
                     <table class="requests-table">
                         <thead>
                             <tr>
-                                <th>Employee ID</th>
+                                <th style="background-color: #e3f2fd; color: #1976d2; font-weight: bold;">Employee ID</th>
                                 <th>Employee Name</th>
                                 <th>Total Vouchers</th>
                                 <th>Total Amount</th>
@@ -443,14 +450,6 @@ $currentUser = getCurrentUser();
                             <div class="info-item">
                                 <label>Last Login:</label>
                                 <span id="lastLogin">Loading...</span>
-                            </div>
-                            <div class="info-item">
-                                <label>Total Records:</label>
-                                <span id="totalRecords">Loading...</span>
-                            </div>
-                            <div class="info-item">
-                                <label>Database Size:</label>
-                                <span id="dbSize">Loading...</span>
                             </div>
                         </div>
                     </div>

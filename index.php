@@ -42,10 +42,10 @@ if (isLoggedIn()) {
                 </span>
             </div>
             <div class="options-row">
-                <label class="remember-me">
+                <!-- <label class="remember-me">
                     <input type="checkbox" name="remember"> Remember me
                 </label>
-                <a href="#" class="forgot-password">Forgot Password?</a>
+                <a href="#" class="forgot-password">Forgot Password?</a> -->
             </div>
             <button type="submit" class="signin-btn">Sign In <span class="arrow">→</span></button>
             <div class="footer">

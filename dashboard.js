@@ -355,14 +355,72 @@ function showSection(sectionId) {
             updateDashboardStats();
         } else if (sectionId === 'employees') {
             renderEmployeeTable();
+            initializeSearchForSection('employees');
         } else if (sectionId === 'borrowers') {
             renderBorrowerTable();
+            console.log('Borrowers section shown, checking search input...');
+            setTimeout(() => {
+                const searchInput = document.querySelector('#borrowers-content .search-input');
+                console.log('Borrowers search input found:', !!searchInput);
+                if (searchInput) {
+                    console.log('Search input element:', searchInput);
+                }
+            }, 50);
+            initializeSearchForSection('borrowers');
         } else if (sectionId === 'vouchers') {
             renderVoucherTable();
+            initializeSearchForSection('vouchers');
         } else if (sectionId === 'reports') {
             updateReportsTable();
         }
     }
+}
+
+/**
+ * Initialize search functionality for a specific section
+ * @param {string} sectionType - The section type (employees, borrowers, vouchers)
+ */
+function initializeSearchForSection(sectionType) {
+    // Use setTimeout to ensure the DOM is fully rendered
+    setTimeout(() => {
+        const searchInput = document.querySelector(`#${sectionType}-content .search-input`);
+        console.log(`Looking for search input in ${sectionType}-content:`, searchInput);
+        
+        if (searchInput) {
+            // Clear any existing value
+            searchInput.value = '';
+            
+            // Remove any existing event listeners to prevent duplicates
+            const newSearchInput = searchInput.cloneNode(true);
+            searchInput.parentNode.replaceChild(newSearchInput, searchInput);
+            
+            // Add the event listener
+            newSearchInput.addEventListener('input', function(e) {
+                const searchTerm = e.target.value;
+                console.log(`Search triggered for ${sectionType} with term:`, searchTerm);
+                
+                if (sectionType === 'employees') {
+                    filterEmployeeTable(searchTerm);
+                } else if (sectionType === 'borrowers') {
+                    filterBorrowerTable(searchTerm);
+                } else if (sectionType === 'vouchers') {
+                    filterVoucherTable(searchTerm);
+                }
+            });
+            
+            // Also add keyup event as backup
+            newSearchInput.addEventListener('keyup', function(e) {
+                const searchTerm = e.target.value;
+                if (sectionType === 'borrowers') {
+                    filterBorrowerTable(searchTerm);
+                }
+            });
+            
+            console.log(`Search functionality initialized for ${sectionType}`);
+        } else {
+            console.error(`Search input not found for ${sectionType}`);
+        }
+    }, 100);
 }
 
 /**
@@ -449,7 +507,7 @@ function renderBorrowerTable() {
         html += `
             <tr class="${rowClass}">
                 <td>${borrower.applicationNo || 'N/A'}</td>
-                <td>${borrower.empId}</td>
+                <td style="font-weight: bold; background-color: #f8f9fa; color: #2196f3;">${borrower.empId}</td>
                 <td>${borrower.name}</td>
                 <td>₹${(borrower.amount || 0).toLocaleString()}</td>
                 <td>₹${(borrower.outstandingAmount || borrower.amount || 0).toLocaleString()}</td>
@@ -504,7 +562,7 @@ function renderVoucherTable() {
     Object.values(employeeGroups).forEach(employee => {
         html += `
             <tr>
-                <td>${employee.empId}</td>
+                <td style="font-weight: bold; background-color: #f8f9fa; color: #2196f3;">${employee.empId}</td>
                 <td>${employee.empName}</td>
                 <td><span class="voucher-count">${employee.vouchers.length}</span></td>
                 <td><span class="amount-total">₹${(employee.totalAmount || 0).toLocaleString()}</span></td>
@@ -3752,15 +3810,16 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 100);
     });
     
-    // Add search functionality for employees
-    const employeeSearchInput = document.querySelector('#employees-content .search-input');
-    if (employeeSearchInput) {
-        employeeSearchInput.addEventListener('input', function() {
-            filterEmployeeTable(this.value);
-        });
-    }
-    
-    // Change password form handler
+    // Initialize settings
+    loadSettings();
+    setupAutoSave();
+});
+
+/**
+ * Setup search functionality for all sections - simplified version
+ */
+// Change password form handler - moved outside of DOMContentLoaded for proper scoping
+document.addEventListener('DOMContentLoaded', function() {
     const changePasswordForm = document.getElementById('changePasswordForm');
     if (changePasswordForm) {
         changePasswordForm.addEventListener('submit', function(e) {
@@ -3768,10 +3827,6 @@ document.addEventListener('DOMContentLoaded', function() {
             changePassword();
         });
     }
-    
-    // Initialize settings
-    loadSettings();
-    setupAutoSave();
 });
 
 /**
@@ -3790,20 +3845,227 @@ function filterEmployeeTable(searchTerm) {
     );
     
     if (filteredEmployees.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; padding: 20px; color: #666;">No employees found matching your search.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 20px; color: #666;">No employees found matching your search.</td></tr>';
         return;
     }
     
     let html = '';
     filteredEmployees.forEach(employee => {
+        // Format the created_at date
+        let entryDate = 'N/A';
+        if (employee.created_at) {
+            const date = new Date(employee.created_at);
+            entryDate = date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: '2-digit'
+            });
+        }
+        
         html += `
             <tr>
-                <td>${employee.id}</td>
+                <td style="font-weight: bold; background-color: #f8f9fa; color: #2196f3;">${employee.id}</td>
                 <td>${employee.name}</td>
+                <td>${entryDate}</td>
                 <td>
                     <button class="view-btn" onclick="viewRecord('employee', '${employee.id}')">View</button>
                     <button class="edit-btn" onclick="editRecord('employee', '${employee.id}')">Edit</button>
                     <button class="delete-btn" onclick="deleteRecord('employee', '${employee.id}')">Delete</button>
+                </td>
+            </tr>
+        `;
+    });
+    
+    tbody.innerHTML = html;
+}
+
+/**
+ * Filter borrower table based on search term
+ * @param {string} searchTerm - The search term to filter by
+ */
+function filterBorrowerTable(searchTerm) {
+    console.log('filterBorrowerTable called with searchTerm:', searchTerm);
+    
+    // Check if data exists
+    if (!data || !data.borrowers) {
+        console.error('Borrowers data not available');
+        return;
+    }
+    
+    const borrowers = data.borrowers;
+    console.log('Total borrowers:', Object.keys(borrowers).length);
+    
+    const tbody = document.querySelector('#borrowers-content .requests-table tbody');
+    
+    if (!tbody) {
+        console.log('Borrower table tbody not found');
+        return;
+    }
+    
+    // If search term is empty, show all borrowers
+    if (!searchTerm || searchTerm.trim() === '') {
+        console.log('Empty search term, rendering all borrowers');
+        renderBorrowerTable();
+        return;
+    }
+    
+    const searchLower = searchTerm.toLowerCase();
+    console.log('Searching for:', searchLower);
+    
+    const filteredBorrowers = Object.values(borrowers).filter(borrower => {
+        const matches = (
+            (borrower.applicationNo && borrower.applicationNo.toString().toLowerCase().includes(searchLower)) ||
+            (borrower.empId && borrower.empId.toString().toLowerCase().includes(searchLower)) ||
+            (borrower.name && borrower.name.toString().toLowerCase().includes(searchLower)) ||
+            (borrower.month && borrower.month.toString().toLowerCase().includes(searchLower)) ||
+            (borrower.status && borrower.status.toString().toLowerCase().includes(searchLower))
+        );
+        
+        if (matches) {
+            console.log('Match found:', borrower.empId, borrower.name);
+        }
+        
+        return matches;
+    });
+    
+    console.log('Filtered borrowers count:', filteredBorrowers.length);
+    
+    if (filteredBorrowers.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; padding: 20px; color: #666;">No borrowers found matching your search.</td></tr>';
+        return;
+    }
+    
+    let html = '';
+    filteredBorrowers.forEach(borrower => {
+        // Format the created_at date for entry date
+        let entryDate = 'N/A';
+        if (borrower.created_at) {
+            const date = new Date(borrower.created_at);
+            entryDate = date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: '2-digit'
+            });
+        }
+        
+        // Determine status display and styling
+        const isCompleted = borrower.status === 'completed' || (borrower.outstandingAmount && borrower.outstandingAmount <= 0);
+        const statusClass = isCompleted ? 'status-completed' : 'status-active';
+        const statusText = isCompleted ? 'Completed' : 'Active';
+        const rowClass = isCompleted ? 'completed-row' : '';
+        
+        // Determine if edit/delete should be disabled for completed records
+        const editDisabled = isCompleted ? 'disabled' : '';
+        const deleteDisabled = isCompleted ? 'disabled' : '';
+        
+        html += `
+            <tr class="${rowClass}">
+                <td>${borrower.applicationNo || 'N/A'}</td>
+                <td style="font-weight: bold; background-color: #f8f9fa; color: #2196f3;">${borrower.empId}</td>
+                <td>${borrower.name}</td>
+                <td>₹${(borrower.amount || 0).toLocaleString()}</td>
+                <td>₹${(borrower.outstandingAmount || borrower.amount || 0).toLocaleString()}</td>
+                <td>₹${(borrower.emi || 0).toLocaleString()}</td>
+                <td>${borrower.month || 'N/A'}</td>
+                <td>${convertDateFormat(borrower.disbursedDate)}</td>
+                <td>${entryDate}</td>
+                <td><span class="status ${statusClass}">${statusText}</span></td>
+                <td>
+                    <button class="view-btn" onclick="viewRecord('borrower', '${borrower.empId}')">View History</button>
+                    <button class="edit-btn ${editDisabled}" onclick="editRecord('borrower', '${borrower.id}')" ${editDisabled ? 'disabled title="Cannot edit completed records"' : ''}>Edit</button>
+                    <button class="delete-btn ${deleteDisabled}" onclick="deleteRecord('borrower', '${borrower.id}')" ${deleteDisabled ? 'disabled title="Cannot delete completed records"' : ''}>Delete</button>
+                </td>
+            </tr>
+        `;
+    });
+    
+    tbody.innerHTML = html;
+}
+
+/**
+ * Test function to manually trigger borrower search - for debugging
+ */
+function testBorrowerSearch(term) {
+    console.log('Manual test of borrower search with term:', term);
+    filterBorrowerTable(term || 'test');
+}
+
+/**
+ * Manually initialize borrower search - backup function
+ */
+function forceInitializeBorrowerSearch() {
+    const searchInput = document.querySelector('#borrowers-content .search-input');
+    console.log('Force initialize - search input found:', !!searchInput);
+    
+    if (searchInput) {
+        searchInput.removeEventListener('input', filterBorrowerTable);
+        searchInput.addEventListener('input', function(e) {
+            console.log('Force initialized search triggered:', e.target.value);
+            filterBorrowerTable(e.target.value);
+        });
+        console.log('Force initialization complete');
+        return true;
+    }
+    return false;
+}
+
+/**
+ * Filter voucher table based on search term
+ * @param {string} searchTerm - The search term to filter by
+ */
+function filterVoucherTable(searchTerm) {
+    const vouchers = data.vouchers;
+    const tbody = document.querySelector('#vouchers-content .requests-table tbody');
+    
+    if (!tbody) return;
+    
+    if (Object.keys(vouchers).length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 20px; color: #666;">No vouchers found. Click "Create New Voucher" to get started.</td></tr>';
+        return;
+    }
+    
+    // Group vouchers by employee and filter
+    const employeeGroups = {};
+    Object.values(vouchers).forEach(voucher => {
+        const empId = voucher.empId;
+        if (!employeeGroups[empId]) {
+            employeeGroups[empId] = {
+                empId: voucher.empId,
+                empName: voucher.empName,
+                vouchers: [],
+                totalAmount: 0
+            };
+        }
+        employeeGroups[empId].vouchers.push(voucher);
+        employeeGroups[empId].totalAmount += parseFloat(voucher.amount);
+    });
+    
+    // Filter employee groups based on search term
+    const filteredEmployeeGroups = Object.values(employeeGroups).filter(employee => 
+        (employee.empId && employee.empId.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (employee.empName && employee.empName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        employee.vouchers.some(voucher => 
+            (voucher.applicationNo && voucher.applicationNo.toLowerCase().includes(searchTerm.toLowerCase())) ||
+            (voucher.month && voucher.month.toLowerCase().includes(searchTerm.toLowerCase())) ||
+            (voucher.id && voucher.id.toLowerCase().includes(searchTerm.toLowerCase()))
+        )
+    );
+    
+    if (filteredEmployeeGroups.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 20px; color: #666;">No vouchers found matching your search.</td></tr>';
+        return;
+    }
+    
+    let html = '';
+    filteredEmployeeGroups.forEach(employee => {
+        html += `
+            <tr>
+                <td style="font-weight: bold; background-color: #f8f9fa; color: #2196f3;">${employee.empId}</td>
+                <td>${employee.empName}</td>
+                <td><span class="voucher-count">${employee.vouchers.length}</span></td>
+                <td><span class="amount-total">₹${(employee.totalAmount || 0).toLocaleString()}</span></td>
+                <td>
+                    <button class="view-btn" onclick="viewEmployeeVouchers('${employee.empId}')">View Vouchers</button>
                 </td>
             </tr>
         `;

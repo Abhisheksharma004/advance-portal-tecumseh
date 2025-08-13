@@ -210,6 +210,7 @@ body {
 
 .sidebar-menu {
     list-style: none;
+    padding-bottom: 140px; /* Increased padding for larger logo */
     /* padding: 0rem 0; */
 }
 
@@ -238,6 +239,29 @@ body {
     color: #6d87ea;
     border-left-color: #6d87ea;
     font-weight: 500;
+}
+
+/* Sidebar Logo */
+.sidebar-logo {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    /* padding: 1.5rem;
+    background: #ffffff; */
+    border-top: 1px solid #e9ecef;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.sidebar-logo-img {
+    width: 100px;
+    height: 100px;
+    object-fit: contain;
+    border-radius: 8px;
+    left: 35px;
+    position: relative;
 }
 
 /* Main Content */
@@ -397,6 +421,40 @@ body {
 
 /* Highlight Employee ID header */
 #employees-content .requests-table th:nth-child(1) {
+    background-color: #e3f2fd !important;
+    color: #1976d2 !important;
+    font-weight: bold !important;
+}
+
+/* Show Employee ID column in vouchers section */
+#vouchers-content .requests-table th:nth-child(1),
+#vouchers-content .requests-table td:nth-child(1) {
+    display: table-cell !important;
+    font-weight: bold;
+    color: #1976d2;
+    background-color: #f8f9fa;
+    min-width: 120px;
+}
+
+/* Highlight Employee ID header in vouchers */
+#vouchers-content .requests-table th:nth-child(1) {
+    background-color: #e3f2fd !important;
+    color: #1976d2 !important;
+    font-weight: bold !important;
+}
+
+/* Show Employee ID column in borrowers section */
+#borrowers-content .requests-table th:nth-child(2),
+#borrowers-content .requests-table td:nth-child(2) {
+    display: table-cell !important;
+    font-weight: bold;
+    color: #1976d2;
+    background-color: #f8f9fa;
+    min-width: 120px;
+}
+
+/* Highlight Employee ID header in borrowers (2nd column) */
+#borrowers-content .requests-table th:nth-child(2) {
     background-color: #e3f2fd !important;
     color: #1976d2 !important;
     font-weight: bold !important;
@@ -672,6 +730,24 @@ body {
         margin-left: 0;
         padding: 1rem;
         width: 100%;
+    }
+    
+    /* Mobile sidebar logo adjustments */
+    .sidebar-logo {
+        padding: 1rem 1.5rem;
+    }
+    
+    .sidebar-logo-img {
+        width: 50px;
+        height: 50px;
+    }
+    
+    .sidebar-logo-text .company-name {
+        font-size: 0.9rem;
+    }
+    
+    .sidebar-logo-text .tagline {
+        font-size: 0.75rem;
     }
     
     .dashboard-sections {
