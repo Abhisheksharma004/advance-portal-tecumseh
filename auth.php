@@ -17,7 +17,7 @@ function authenticateUser($email, $password) {
     $pdo = getDB();
     
     try {
-        $stmt = $pdo->prepare("SELECT id, email, password, username, role, status FROM users WHERE email = ? AND status = 'active'");
+        $stmt = $pdo->prepare("SELECT id, email, password, username, role, status FROM advance_users WHERE email = ? AND status = 'active'");
         $stmt->execute([$email]);
         $user = $stmt->fetch();
         
@@ -66,7 +66,7 @@ function getCurrentUser() {
     // Fetch fresh user data from database instead of relying on session
     try {
         $pdo = getDB();
-        $stmt = $pdo->prepare("SELECT id, username, email, role FROM users WHERE id = ? AND status = 'active'");
+        $stmt = $pdo->prepare("SELECT id, username, email, role FROM advance_users WHERE id = ? AND status = 'active'");
         $stmt->execute([$_SESSION['user_id']]);
         $user = $stmt->fetch();
         

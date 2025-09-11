@@ -2064,6 +2064,64 @@ body {
     border-radius: 6px;
 }
 
+/* Enhanced Date Preview Styles */
+.date-preview {
+    text-align: center;
+    padding: 4px;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    border: 1px solid #e9ecef;
+}
+
+.date-original {
+    color: #6c757d !important;
+    font-size: 0.85em !important;
+    font-family: monospace;
+    margin-bottom: 2px;
+}
+
+.date-formatted {
+    color: #007bff !important;
+    font-weight: bold !important;
+    font-size: 0.95em;
+}
+
+.date-preview .date-formatted {
+    color: #28a745 !important;
+}
+
+/* Preview table enhancements */
+.preview-table-container table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.preview-table-container th {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    padding: 8px 12px;
+    text-align: left;
+    font-weight: 600;
+    color: #495057;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.preview-table-container td {
+    border: 1px solid #dee2e6;
+    padding: 8px 12px;
+    vertical-align: top;
+}
+
+.preview-table-container tr:nth-child(even) {
+    background-color: #f8f9fa;
+}
+
+.preview-table-container tr:hover {
+    background-color: #e3f2fd;
+}
+
 /* Notification Styles */
 .notification {
     position: fixed;

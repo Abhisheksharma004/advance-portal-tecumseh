@@ -15,37 +15,69 @@ A comprehensive web application for managing employee advance payments, borrower
 ## 🛠️ Installation
 
 ### Prerequisites
-- XAMPP (Apache + MySQL + PHP)
+- XAMPP (Apache + PHP)
+- SQL Server Express (Free)
+- PHP SQL Server Drivers (SQLSRV)
 - Web browser (Chrome, Firefox, Safari, etc.)
 
 ### Setup Steps
 
-1. **Download and Setup XAMPP**
-   - Download XAMPP from [https://www.apachefriends.org/](https://www.apachefriends.org/)
-   - Install and start Apache and MySQL services
+1. **Install SQL Server Express**
+   - Download from [Microsoft SQL Server Downloads](https://www.microsoft.com/en-us/sql-server/sql-server-downloads)
+   - Choose "Express" edition (free)
+   - Enable "Mixed Mode Authentication" during installation
 
-2. **Place Project Files**
-   - Copy the `advance-portal-main` folder to your XAMPP `htdocs` directory
-   - Path should be: `C:\xampp\htdocs\advance-portal-main\`
+2. **Install PHP SQL Server Drivers**
+   - Download Microsoft Drivers for PHP for SQL Server
+   - Copy `php_sqlsrv_82_ts.dll` and `php_pdo_sqlsrv_82_ts.dll` to `C:\xampp\php\ext\`
+   - Add to `php.ini`:
+     ```ini
+     extension=sqlsrv
+     extension=pdo_sqlsrv
+     ```
 
-3. **Database Setup**
-   - Open your web browser
-   - Navigate to: `http://localhost/advance-portal-main/setup_database.php`
-   - This will automatically create the database and tables
+3. **Setup XAMPP**
+   - Download and install XAMPP
+   - Start Apache service
+   - Restart Apache after adding SQL Server extensions
+
+4. **Place Project Files**
+   - Copy the project folder to your XAMPP `htdocs` directory
+   - Path should be: `C:\xampp\htdocs\advance-portal-tecumseh-main\`
+
+5. **Database Configuration**
+   - Edit `config/database.php` with your SQL Server credentials:
+     ```php
+     define('DB_HOST', 'localhost');
+     define('DB_USERNAME', 'your_username');
+     define('DB_PASSWORD', 'your_password');
+     define('DB_NAME', 'eaccess');
+     ```
+
+6. **Database Setup**
+   - Navigate to: `http://localhost/advance-portal-tecumseh-main/setup_database.php`
+   - This will create the SQL Server database and tables
    - Default database name: `eaccess`
 
-4. **Access the Application**
-   - Navigate to: `http://localhost/advance-portal-main/`
+7. **Add Sample Data (Optional)**
+   - Navigate to: `http://localhost/advance-portal-tecumseh-main/setup_sample_data.php`
+   - This will add sample employees and admin user
+
+8. **Access the Application**
+   - Navigate to: `http://localhost/advance-portal-tecumseh-main/`
    - Login with default credentials:
      - **Username**: admin@tecumseh.com
-     - **Password**: admin
+     - **Password**: admin123
 
 ## 📁 Project Structure
 
 ```
-advance-portal-main/
+advance-portal-tecumseh-main/
 ├── config/
-│   └── database.php        # Database configuration
+│   └── database.php        # SQL Server database configuration
+├── database_schema.sql     # SQL Server database schema
+├── setup_database.php     # Database setup script
+├── setup_sample_data.php  # Sample data setup
 ├── api.php                 # REST API endpoints
 ├── auth.php               # Authentication functions
 ├── dashboard.php          # Main dashboard page
@@ -168,4 +200,3 @@ This project is for internal use at Tecumseh. All rights reserved.
 ---
 
 **Note**: This application is designed for local development and testing. For production deployment, additional security measures and server configuration would be required.
-

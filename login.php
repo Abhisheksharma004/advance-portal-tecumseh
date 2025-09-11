@@ -94,7 +94,7 @@ if ($user) {
     
     // Check if user exists but password is wrong, or user doesn't exist
     $pdo = getDB();
-    $stmt = $pdo->prepare("SELECT id, status FROM users WHERE email = ?");
+    $stmt = $pdo->prepare("SELECT id, status FROM advance_users WHERE email = ?");
     $stmt->execute([$email]);
     $userExists = $stmt->fetch();
     

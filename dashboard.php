@@ -436,7 +436,7 @@ $currentUser = getCurrentUser();
                         </div>
                     </div>
                     <!-- System Information -->
-                    <div class="settings-section">
+                    <!-- <div class="settings-section">
                         <h3>System Information</h3>
                         <div class="system-info">
                             <div class="info-item">
@@ -452,7 +452,7 @@ $currentUser = getCurrentUser();
                                 <span id="lastLogin">Loading...</span>
                             </div>
                         </div>
-                    </div>
+                    </div> -->
                 </div>
             </div>
         </main>

@@ -45,8 +45,9 @@ function convertDateFormat(dateString) {
     
     // Handle Excel numeric dates (days since 1900-01-01)
     if (typeof dateString === 'number') {
-        const excelEpoch = new Date(1900, 0, 1);
-        const date = new Date(excelEpoch.getTime() + (dateString - 1) * 24 * 60 * 60 * 1000);
+        // Excel date handling with correction for Excel's leap year bug
+        const excelBaseDate = new Date(1899, 11, 30); // Dec 30, 1899 (corrected base)
+        const date = new Date(excelBaseDate.getTime() + dateString * 24 * 60 * 60 * 1000);
         const day = String(date.getDate()).padStart(2, '0');
         const month = String(date.getMonth() + 1).padStart(2, '0');
         const year = date.getFullYear();
@@ -61,9 +62,14 @@ function convertDateFormat(dateString) {
         return '';
     }
     
-    // Check if date is already in DD-MM-YYYY format
-    if (dateStr.match(/^\d{2}-\d{2}-\d{4}$/)) {
-        return dateStr;
+    // Check if date is already in DD-MM-YYYY or DD/MM/YYYY format
+    if (dateStr.match(/^\d{1,2}[-\/]\d{1,2}[-\/]\d{4}$/)) {
+        // Already in DD-MM-YYYY or DD/MM/YYYY format, just normalize separators
+        const parts = dateStr.split(/[-\/]/);
+        const day = parts[0].padStart(2, '0');
+        const month = parts[1].padStart(2, '0');
+        const year = parts[2];
+        return `${day}-${month}-${year}`;
     }
     
     // Convert from YYYY-MM-DD to DD-MM-YYYY
@@ -72,9 +78,25 @@ function convertDateFormat(dateString) {
         return `${day}-${month}-${year}`;
     }
     
-    // Try to parse as Date and format
+    // Convert from YYYY/MM/DD to DD-MM-YYYY
+    if (dateStr.match(/^\d{4}\/\d{1,2}\/\d{1,2}$/)) {
+        const [year, month, day] = dateStr.split('/');
+        return `${day.padStart(2, '0')}-${month.padStart(2, '0')}-${year}`;
+    }
+    
+    // Try to parse as Date and format (avoiding timezone issues)
     try {
-        const date = new Date(dateStr);
+        // For string dates, try to parse them carefully
+        let date;
+        
+        // Handle MM/DD/YYYY format
+        if (dateStr.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
+            const [month, day, year] = dateStr.split('/');
+            date = new Date(year, month - 1, day); // month is 0-indexed
+        } else {
+            date = new Date(dateStr);
+        }
+        
         if (!isNaN(date.getTime())) {
             const day = String(date.getDate()).padStart(2, '0');
             const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -581,8 +603,13 @@ function renderVoucherTable() {
  * @param {string} empId - Employee ID to view vouchers for
  */
 function viewEmployeeVouchers(empId) {
+    console.log('viewEmployeeVouchers called with empId:', empId);
+    console.log('data object:', data);
+    
     const vouchers = data.vouchers;
     const employeeVouchers = Object.values(vouchers).filter(voucher => voucher.empId === empId);
+    
+    console.log('Found vouchers:', employeeVouchers);
     
     if (employeeVouchers.length === 0) {
         alert('No vouchers found for this employee');
@@ -590,26 +617,46 @@ function viewEmployeeVouchers(empId) {
     }
     
     const employee = employeeVouchers[0]; // Get employee details from first voucher
+    let totalAmount = 0; // Initialize totalAmount at the top
     
-    let vouchersList = '';
-    let totalAmount = 0;
+    let vouchersList = `
+        <div class="table-container" style="overflow-x: auto; border: 1px solid #ddd; border-radius: 8px;">
+            <table class="vouchers-table" style="width: 100%; border-collapse: collapse; background: white;">
+                <thead>
+                    <tr style="background: #f8f9fa; border-bottom: 2px solid #dee2e6;">
+                        <th style="padding: 12px; text-align: left; font-weight: 600; border-right: 1px solid #dee2e6;">#</th>
+                        <th style="padding: 12px; text-align: left; font-weight: 600; border-right: 1px solid #dee2e6;">Voucher No</th>
+                        <th style="padding: 12px; text-align: left; font-weight: 600; border-right: 1px solid #dee2e6;">Application No</th>
+                        <th style="padding: 12px; text-align: left; font-weight: 600; border-right: 1px solid #dee2e6;">Date</th>
+                        <th style="padding: 12px; text-align: left; font-weight: 600; border-right: 1px solid #dee2e6;">Month</th>
+                        <th style="padding: 12px; text-align: left; font-weight: 600; color: #28a745;">Amount</th>
+                    </tr>
+                </thead>
+                <tbody>`;
     
     employeeVouchers.forEach((voucher, index) => {
         totalAmount += parseFloat(voucher.amount);
         vouchersList += `
-            <div class="voucher-item" style="border-bottom: 1px solid #eee; padding: 10px 0; margin: 5px 0;">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <div>
-                        <strong>Voucher #${voucher.id}</strong> - 
-                        Application: <span style="color: #007bff; font-weight: bold;">${voucher.applicationNo || 'N/A'}</span> - 
-                        Date: ${convertDateFormat(voucher.date)} - 
-                        Month: ${voucher.month} - 
-                        Amount: <span style="color: #28a745; font-weight: bold;">₹${voucher.amount}</span>
-                    </div>
-                </div>
-            </div>
-        `;
+                    <tr style="border-bottom: 1px solid #dee2e6; ${index % 2 === 0 ? 'background: #f8f9fa;' : 'background: white;'}">
+                        <td style="padding: 10px 12px; border-right: 1px solid #dee2e6; font-weight: 500;">${index + 1}</td>
+                        <td style="padding: 10px 12px; border-right: 1px solid #dee2e6; font-family: monospace; color: #007bff; font-weight: bold;">${voucher.id}</td>
+                        <td style="padding: 10px 12px; border-right: 1px solid #dee2e6; font-family: monospace; color: #6f42c1; font-weight: 500;">${voucher.applicationNo || 'N/A'}</td>
+                        <td style="padding: 10px 12px; border-right: 1px solid #dee2e6; font-weight: 500;">${convertDateFormat(voucher.date)}</td>
+                        <td style="padding: 10px 12px; border-right: 1px solid #dee2e6;">${voucher.month}</td>
+                        <td style="padding: 10px 12px; color: #28a745; font-weight: bold; text-align: right;">₹${parseFloat(voucher.amount).toLocaleString()}</td>
+                    </tr>`;
     });
+    
+    vouchersList += `
+                </tbody>
+                <tfoot>
+                    <tr style="background: #e3f2fd; border-top: 2px solid #2196f3;">
+                        <td colspan="5" style="padding: 12px; font-weight: bold; text-align: right; border-right: 1px solid #dee2e6;">Total Amount:</td>
+                        <td style="padding: 12px; color: #1976d2; font-weight: bold; font-size: 1.1em; text-align: right;">₹${totalAmount.toLocaleString()}</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>`;
     
     const content = `
         <div class="employee-vouchers-details">
@@ -633,9 +680,16 @@ function viewEmployeeVouchers(empId) {
     `;
 
     const viewModalBody = document.getElementById('viewModalBody');
+    console.log('viewModalBody element found:', viewModalBody);
+    
     if (viewModalBody) {
         viewModalBody.innerHTML = content;
+        console.log('About to open modal: viewModal');
         openModal('viewModal');
+        console.log('openModal called');
+    } else {
+        console.error('viewModalBody element not found!');
+        alert('Modal element not found. Please refresh the page.');
     }
 }
 
@@ -2938,77 +2992,173 @@ function validateVoucherData(data) {
     if (data.length === 0) return;
     
     const firstRow = data[0];
-    const hasId = firstRow.hasOwnProperty('id') || firstRow.hasOwnProperty('ID') || firstRow.hasOwnProperty('Voucher No');
-    const hasEmpId = firstRow.hasOwnProperty('empId') || firstRow.hasOwnProperty('Employee ID') || firstRow.hasOwnProperty('employeeId');
-    const hasEmpName = firstRow.hasOwnProperty('empName') || firstRow.hasOwnProperty('Employee Name') || firstRow.hasOwnProperty('employeeName');
-    const hasDate = firstRow.hasOwnProperty('date') || firstRow.hasOwnProperty('Date') || firstRow.hasOwnProperty('Voucher Date');
-    const hasAmount = firstRow.hasOwnProperty('amount') || firstRow.hasOwnProperty('Amount');
-    const hasMonth = firstRow.hasOwnProperty('month') || firstRow.hasOwnProperty('Month') || firstRow.hasOwnProperty('MONTH');
+    console.log('Available columns in Excel:', Object.keys(firstRow)); // Debug log
     
-    if (!hasId) {
-        throw new Error('Excel file must contain a "Voucher No" column (matching Create New Voucher form).');
-    }
+    // More flexible column detection with trimming and case-insensitive matching
+    const columnKeys = Object.keys(firstRow).map(key => key.trim());
+    
+    const hasEmpId = columnKeys.some(key => 
+        key.toLowerCase().includes('employee') && key.toLowerCase().includes('id') ||
+        key.toLowerCase() === 'empid' || key.toLowerCase() === 'employeeid'
+    );
+    
+    const hasEmpName = columnKeys.some(key => 
+        key.toLowerCase().includes('employee') && key.toLowerCase().includes('name') ||
+        key.toLowerCase() === 'empname' || key.toLowerCase() === 'employeename'
+    );
+    
+    const hasAppNumber = columnKeys.some(key => 
+        key.toLowerCase().includes('application') && key.toLowerCase().includes('number') ||
+        key.toLowerCase() === 'applicationno' || key.toLowerCase() === 'applicationnumber'
+    );
+    
+    const hasDate = columnKeys.some(key => 
+        key.toLowerCase().includes('voucher') && key.toLowerCase().includes('date') ||
+        key.toLowerCase() === 'date' || key.toLowerCase() === 'voucherdate'
+    );
+    
+    const hasAmount = columnKeys.some(key => 
+        key.toLowerCase() === 'amount'
+    );
+    
+    const hasMonth = columnKeys.some(key => 
+        key.toLowerCase() === 'month'
+    );
+    
+    const hasVoucherId = columnKeys.some(key => 
+        key.toLowerCase().includes('voucher') && (key.toLowerCase().includes('id') || key.toLowerCase().includes('no')) ||
+        key.toLowerCase() === 'id' || key.toLowerCase() === 'voucherid' ||
+        key.toLowerCase() === 'voucher id' || key.toLowerCase() === 'voucher_id' ||
+        key.toLowerCase() === 'voucher no' || key.toLowerCase() === 'voucherno'
+    );
+    
+    console.log('Column validation results:', {
+        hasEmpId, hasEmpName, hasAppNumber, hasDate, hasAmount, hasMonth, hasVoucherId
+    }); // Debug log
+    
     if (!hasEmpId) {
-        throw new Error('Excel file must contain an "Employee ID" column (matching Create New Voucher form).');
+        throw new Error('Excel file must contain an "Employee ID" column. Found columns: ' + columnKeys.join(', '));
     }
     if (!hasEmpName) {
-        throw new Error('Excel file must contain an "Employee Name" column (matching Create New Voucher form).');
+        throw new Error('Excel file must contain an "Employee Name" column. Found columns: ' + columnKeys.join(', '));
+    }
+    if (!hasAppNumber) {
+        throw new Error('Excel file must contain an "Application Number" column. Found columns: ' + columnKeys.join(', '));
     }
     if (!hasDate) {
-        throw new Error('Excel file must contain a "Voucher Date" column (matching Create New Voucher form).');
+        throw new Error('Excel file must contain a "Voucher Date" column. Found columns: ' + columnKeys.join(', '));
     }
     if (!hasAmount) {
-        throw new Error('Excel file must contain an "Amount" column (matching Create New Voucher form).');
+        throw new Error('Excel file must contain an "Amount" column. Found columns: ' + columnKeys.join(', '));
     }
     if (!hasMonth) {
-        throw new Error('Excel file must contain a "Month" column (matching Create New Voucher form).');
+        throw new Error('Excel file must contain a "Month" column. Found columns: ' + columnKeys.join(', '));
+    }
+    if (!hasVoucherId) {
+        throw new Error('Excel file must contain a "Voucher Id", "Voucher ID", "Voucher No", or "ID" column. Found columns: ' + columnKeys.join(', '));
     }
     
-    // Normalize column names for consistency - matching Create New Voucher form field names
+    // Normalize column names to match the exact preview format
     data.forEach(row => {
-        // Voucher No field
-        if (row.hasOwnProperty('ID')) row.id = row.ID;
-        if (row.hasOwnProperty('Voucher No')) row.id = row['Voucher No'];
+        const originalKeys = Object.keys(row);
         
-        // Employee ID field
-        if (row.hasOwnProperty('Employee ID')) row.empId = row['Employee ID'];
-        if (row.hasOwnProperty('employeeId')) row.empId = row.employeeId;
+        // Employee ID field - find and normalize
+        const empIdKey = originalKeys.find(key => {
+            const lowerKey = key.trim().toLowerCase();
+            return lowerKey.includes('employee') && lowerKey.includes('id') ||
+                   lowerKey === 'empid' || lowerKey === 'employeeid';
+        });
+        if (empIdKey && !row['Employee ID']) {
+            row['Employee ID'] = row[empIdKey];
+        }
         
-        // Employee Name field
-        if (row.hasOwnProperty('Employee Name')) row.empName = row['Employee Name'];
-        if (row.hasOwnProperty('Employee Name')) row.empName = row['Employee Name'];
-        if (row.hasOwnProperty('employeeName')) row.empName = row.employeeName;
+        // Employee Name field - find and normalize
+        const empNameKey = originalKeys.find(key => {
+            const lowerKey = key.trim().toLowerCase();
+            return lowerKey.includes('employee') && lowerKey.includes('name') ||
+                   lowerKey === 'empname' || lowerKey === 'employeename';
+        });
+        if (empNameKey && !row['Employee Name']) {
+            row['Employee Name'] = row[empNameKey];
+        }
         
-        // Application Number field (optional)
-        if (row.hasOwnProperty('Application Number')) row.applicationNo = row['Application Number'];
-        if (row.hasOwnProperty('applicationNo')) row.applicationNo = row.applicationNo;
+        // Application Number field - find and normalize
+        const appNumberKey = originalKeys.find(key => {
+            const lowerKey = key.trim().toLowerCase();
+            return lowerKey.includes('application') && lowerKey.includes('number') ||
+                   lowerKey === 'applicationno' || lowerKey === 'applicationnumber';
+        });
+        if (appNumberKey && !row['Application Number']) {
+            row['Application Number'] = row[appNumberKey];
+        }
         
-        // Voucher Date field
-        if (row.hasOwnProperty('Date')) row.date = row.Date;
-        if (row.hasOwnProperty('Voucher Date')) row.date = row['Voucher Date'];
+        // Voucher Date field - find and normalize
+        const dateKey = originalKeys.find(key => {
+            const lowerKey = key.trim().toLowerCase();
+            return lowerKey.includes('voucher') && lowerKey.includes('date') ||
+                   lowerKey === 'date' || lowerKey === 'voucherdate';
+        });
+        if (dateKey && !row['Voucher Date']) {
+            row['Voucher Date'] = row[dateKey];
+        }
         
-        // Amount field
-        if (row.hasOwnProperty('Amount')) row.amount = row.Amount;
+        // Amount field - find and normalize
+        const amountKey = originalKeys.find(key => {
+            return key.trim().toLowerCase() === 'amount';
+        });
+        if (amountKey && !row['Amount']) {
+            row['Amount'] = row[amountKey];
+        }
         
-        // Month field
-        if (row.hasOwnProperty('Month')) row.month = row.Month;
-        if (row.hasOwnProperty('MONTH')) row.month = row.MONTH;
+        // Month field - find and normalize
+        const monthKey = originalKeys.find(key => {
+            return key.trim().toLowerCase() === 'month';
+        });
+        if (monthKey && !row['Month']) {
+            row['Month'] = row[monthKey];
+        }
         
-        // Convert voucher date format from YYYY-MM-DD to DD-MM-YYYY
-        if (row.date) {
-            row.date = convertDateFormat(row.date);
+        // Voucher Id field - find and normalize
+        const voucherIdKey = originalKeys.find(key => {
+            const lowerKey = key.trim().toLowerCase();
+            return lowerKey.includes('voucher') && (lowerKey.includes('id') || lowerKey.includes('no')) ||
+                   lowerKey === 'id' || lowerKey === 'voucherid' ||
+                   lowerKey === 'voucher id' || lowerKey === 'voucher_id' ||
+                   lowerKey === 'voucher no' || lowerKey === 'voucherno';
+        });
+        if (voucherIdKey && !row['Voucher Id']) {
+            row['Voucher Id'] = row[voucherIdKey];
+        }
+        
+        // Convert voucher date format to DD-MM-YYYY for display
+        if (row['Voucher Date']) {
+            row['Voucher Date'] = convertDateFormat(row['Voucher Date']);
         }
     });
 }
 
 /**
- * Display preview table
+ * Display preview table with enhanced date formatting
  * @param {Array} data - Data to display
  */
 function displayPreview(data) {
     if (data.length === 0) return;
     
-    const headers = Object.keys(data[0]);
+    // Define exact column order for voucher preview
+    let headers;
+    let isVoucherData = false;
+    
+    // Check if this is voucher data by looking for voucher-specific columns
+    if (data[0].hasOwnProperty('Employee ID') && data[0].hasOwnProperty('Voucher Date') && 
+        (data[0].hasOwnProperty('Voucher Id') || data[0].hasOwnProperty('Voucher ID') || data[0].hasOwnProperty('Voucher No'))) {
+        // Use exact column order as specified for voucher data
+        headers = ['Employee ID', 'Employee Name', 'Application Number', 'Voucher Date', 'Amount', 'Month', 'Voucher Id'];
+        isVoucherData = true;
+    } else {
+        // For other data types, use existing keys
+        headers = Object.keys(data[0]);
+    }
+    
     let tableHTML = '<thead><tr>';
     headers.forEach(header => {
         tableHTML += `<th>${header}</th>`;
@@ -3017,16 +3167,44 @@ function displayPreview(data) {
     
     // Show first 5 rows for preview
     const previewRows = data.slice(0, 5);
-    previewRows.forEach(record => {
+    previewRows.forEach((record, index) => {
         tableHTML += '<tr>';
         headers.forEach(header => {
-            tableHTML += `<td>${record[header] || ''}</td>`;
+            let cellValue = record[header] || '';
+            
+            // Enhanced date formatting for preview (only for Voucher Date)
+            if (header === 'Voucher Date' && cellValue) {
+                const originalValue = cellValue;
+                const formattedValue = convertDateFormat(cellValue);
+                
+                // Show formatted date with green styling for voucher dates
+                cellValue = `<span class="date-formatted" style="color: #28a745; font-weight: bold;">${formattedValue}</span>`;
+            }
+            
+            // Format amount with proper styling
+            if (header === 'Amount' && cellValue) {
+                cellValue = `<span style="font-weight: bold; color: #007bff;">${cellValue}</span>`;
+            }
+            
+            // Format Employee ID with monospace font
+            if (header === 'Employee ID' && cellValue) {
+                cellValue = `<span style="font-family: monospace; font-weight: bold;">${cellValue}</span>`;
+            }
+            
+            // Format Voucher Id with monospace font
+            if (header === 'Voucher Id' && cellValue) {
+                cellValue = `<span style="font-family: monospace; font-weight: bold; color: #6f42c1;">${cellValue}</span>`;
+            }
+            
+            tableHTML += `<td>${cellValue}</td>`;
         });
         tableHTML += '</tr>';
     });
     
     if (data.length > 5) {
-        tableHTML += `<tr><td colspan="${headers.length}" style="text-align: center; font-style: italic;">... and ${data.length - 5} more rows</td></tr>`;
+        tableHTML += `<tr><td colspan="${headers.length}" style="text-align: center; font-style: italic; background-color: #f8f9fa; padding: 10px;">
+            ... and ${data.length - 5} more rows (total: ${data.length} records)
+        </td></tr>`;
     }
     
     tableHTML += '</tbody>';
@@ -3261,16 +3439,16 @@ function importVouchersToDatabase() {
         return;
     }
     
-    // Prepare voucher data including application number for borrower reduction
+    // Prepare voucher data with the new column structure
     const vouchers = importPreviewData.map((voucher) => {
         return {
-            id: voucher.id, // Use the voucher ID as provided
-            empId: voucher.empId,
-            empName: voucher.empName,
-            applicationNo: voucher.applicationNo || '', // Include application number
-            date: voucher.date,
-            amount: voucher.amount,
-            month: voucher.month
+            id: voucher['Voucher Id'] || voucher['Voucher ID'] || voucher['Voucher No'] || voucher.id, // Handle "Voucher No" as well
+            empId: voucher['Employee ID'] || voucher.empId, // Map from "Employee ID" column
+            empName: voucher['Employee Name'] || voucher.empName, // Map from "Employee Name" column
+            applicationNo: voucher['Application Number'] || voucher.applicationNo || '', // Map from "Application Number" column
+            date: voucher['Voucher Date'] || voucher.date, // Map from "Voucher Date" column
+            amount: voucher['Amount'] || voucher.amount, // Map from "Amount" column
+            month: voucher['Month'] || voucher.month // Map from "Month" column
         };
     });
     
@@ -3307,35 +3485,99 @@ function importVouchersToDatabase() {
             showNotification(successMessage, 'success');
             
             if (result.data && result.data.errors && result.data.errors.length > 0) {
-                console.warn('Import warnings:', result.data.errors);
+                console.warn('Import warnings (' + result.data.errors.length + '):');
+                result.data.errors.forEach((error, index) => {
+                    console.warn(`  ${index + 1}. ${error}`);
+                });
                 
                 // Categorize errors for better user understanding
-                const employeeErrors = result.data.errors.filter(err => err.includes('not found'));
+                const employeeErrors = result.data.errors.filter(err => err.includes('not found') && err.includes('Employee'));
                 const fieldErrors = result.data.errors.filter(err => err.includes('required'));
+                const applicationWarnings = result.data.errors.filter(err => err.includes('Application number') && err.includes('Warning'));
+                const validationErrors = result.data.errors.filter(err => 
+                    err.includes('too long') || 
+                    err.includes('must be greater than') || 
+                    err.includes('Invalid date format')
+                );
                 const otherErrors = result.data.errors.filter(err => 
                     !err.includes('not found') && 
-                    !err.includes('required')
+                    !err.includes('required') &&
+                    !err.includes('Warning - Application number') &&
+                    !err.includes('too long') &&
+                    !err.includes('must be greater than') &&
+                    !err.includes('Invalid date format')
                 );
                 
-                let errorMessage = 'Some records had issues:\n\n';
+                let errorMessage = '⚠️ Import completed with some issues:\n\n';
                 
                 if (employeeErrors.length > 0) {
-                    errorMessage += `👤 Missing Employees (${employeeErrors.length}):\n`;
-                    errorMessage += 'Tip: Ensure all employees exist before importing vouchers\n\n';
+                    errorMessage += `👤 Missing Employees (${employeeErrors.length} errors):\n`;
+                    employeeErrors.slice(0, 3).forEach(err => {
+                        errorMessage += `  • ${err}\n`;
+                    });
+                    if (employeeErrors.length > 3) {
+                        errorMessage += `  • ... and ${employeeErrors.length - 3} more employee errors\n`;
+                    }
+                    errorMessage += '💡 Tip: Add missing employees first, then re-import\n\n';
                 }
                 
                 if (fieldErrors.length > 0) {
-                    errorMessage += `📝 Missing Required Fields (${fieldErrors.length}):\n`;
-                    errorMessage += 'Tip: Check the template for required columns\n\n';
+                    errorMessage += `📝 Missing Required Fields (${fieldErrors.length} errors):\n`;
+                    fieldErrors.slice(0, 3).forEach(err => {
+                        errorMessage += `  • ${err}\n`;
+                    });
+                    if (fieldErrors.length > 3) {
+                        errorMessage += `  • ... and ${fieldErrors.length - 3} more field errors\n`;
+                    }
+                    errorMessage += '💡 Tip: Check Excel template for required columns\n\n';
+                }
+                
+                if (applicationWarnings.length > 0) {
+                    errorMessage += `💰 Application Number Warnings (${applicationWarnings.length} warnings):\n`;
+                    applicationWarnings.slice(0, 3).forEach(err => {
+                        errorMessage += `  • ${err}\n`;
+                    });
+                    if (applicationWarnings.length > 3) {
+                        errorMessage += `  • ... and ${applicationWarnings.length - 3} more application warnings\n`;
+                    }
+                    errorMessage += '💡 Note: These are warnings - vouchers were still imported\n\n';
+                }
+                
+                if (validationErrors.length > 0) {
+                    errorMessage += `🔍 Validation Errors (${validationErrors.length} errors):\n`;
+                    validationErrors.slice(0, 3).forEach(err => {
+                        errorMessage += `  • ${err}\n`;
+                    });
+                    if (validationErrors.length > 3) {
+                        errorMessage += `  • ... and ${validationErrors.length - 3} more validation errors\n`;
+                    }
+                    errorMessage += '💡 Tip: Check data format and field lengths\n\n';
                 }
                 
                 if (otherErrors.length > 0) {
-                    errorMessage += `⚠️ Other Issues (${otherErrors.length}):\n`;
-                    errorMessage += otherErrors.slice(0, 3).join('\n');
+                    errorMessage += `⚠️ Other Issues (${otherErrors.length} errors):\n`;
+                    otherErrors.slice(0, 3).forEach(err => {
+                        errorMessage += `  • ${err}\n`;
+                    });
                     if (otherErrors.length > 3) {
-                        errorMessage += `\n... and ${otherErrors.length - 3} more`;
+                        errorMessage += `  • ... and ${otherErrors.length - 3} more issues\n`;
                     }
+                    errorMessage += '\n💡 Tip: Check console for detailed logs\n';
                 }
+                
+                // Add summary
+                const totalErrors = result.data.errors.length;
+                const totalWarnings = applicationWarnings.length;
+                const actualErrors = totalErrors - totalWarnings;
+                
+                errorMessage += '\n📊 Summary:\n';
+                if (actualErrors > 0) {
+                    errorMessage += `• ${actualErrors} records failed to import\n`;
+                }
+                if (totalWarnings > 0) {
+                    errorMessage += `• ${totalWarnings} warnings (records still imported)\n`;
+                }
+                errorMessage += `• Check console logs for full details\n`;
                 
                 setTimeout(() => {
                     alert(errorMessage);

@@ -43,21 +43,36 @@ function convertDateToDDMMYYYY($dateString) {
 function convertDateToYYYYMMDD($dateString) {
     if (empty($dateString)) return $dateString;
     
+    // Trim whitespace
+    $dateString = trim($dateString);
+    
     // Check if date is already in YYYY-MM-DD format
     if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateString)) {
         return $dateString;
     }
     
-    // Convert from DD-MM-YYYY to YYYY-MM-DD
-    if (preg_match('/^\d{2}-\d{2}-\d{4}$/', $dateString)) {
-        $parts = explode('-', $dateString);
-        return $parts[2] . '-' . $parts[1] . '-' . $parts[0];
+    // Convert from DD-MM-YYYY to YYYY-MM-DD (Excel export with dashes)
+    if (preg_match('/^(\d{1,2})-(\d{1,2})-(\d{4})$/', $dateString, $matches)) {
+        $day = str_pad($matches[1], 2, '0', STR_PAD_LEFT);
+        $month = str_pad($matches[2], 2, '0', STR_PAD_LEFT);
+        $year = $matches[3];
+        return $year . '-' . $month . '-' . $day;
     }
     
-    // Try to parse as Date and format
-    $timestamp = strtotime($dateString);
-    if ($timestamp !== false) {
-        return date('Y-m-d', $timestamp);
+    // Convert from DD/MM/YYYY to YYYY-MM-DD (Excel export with slashes)
+    if (preg_match('/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/', $dateString, $matches)) {
+        $day = str_pad($matches[1], 2, '0', STR_PAD_LEFT);
+        $month = str_pad($matches[2], 2, '0', STR_PAD_LEFT);
+        $year = $matches[3];
+        
+        // Explicitly construct the date to avoid timezone issues
+        return $year . '-' . $month . '-' . $day;
+    }
+    
+    // Convert from MM/DD/YYYY to YYYY-MM-DD (US format - less common)
+    if (preg_match('/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/', $dateString, $matches)) {
+        // This pattern is the same as DD/MM/YYYY, so we assume DD/MM/YYYY
+        // If you need MM/DD/YYYY support, you'll need additional context
     }
     
     return $dateString;
@@ -226,12 +241,12 @@ try {
  */
 function getEmployees() {
     $pdo = getDB();
-    $stmt = $pdo->query("SELECT id, name, created_at FROM employees WHERE status = 'active' ORDER BY id");
-    $employees = $stmt->fetchAll();
+    $stmt = $pdo->query("SELECT id, name, created_at FROM advance_employees WHERE status = 'active' ORDER BY id");
+    $advance_employees = $stmt->fetchAll();
     
     // Convert to the format expected by the frontend
     $result = [];
-    foreach ($employees as $emp) {
+    foreach ($advance_employees as $emp) {
         $result[$emp['id']] = [
             'id' => $emp['id'],
             'name' => $emp['name'],
@@ -239,7 +254,7 @@ function getEmployees() {
         ];
     }
     
-    sendJsonResponse(true, 'Employees loaded successfully', $result);
+    sendJsonResponse(true, 'advance_employees loaded successfully', $result);
 }
 
 /**
@@ -247,14 +262,14 @@ function getEmployees() {
  */
 function getBorrowers() {
     $pdo = getDB();
-    // Include both active and completed borrowers to show completion status
-    $stmt = $pdo->query("SELECT * FROM borrowers WHERE status IN ('active', 'completed') ORDER BY 
+    // Include both active and completed advance_borrowers to show completion status
+    $stmt = $pdo->query("SELECT * FROM advance_borrowers WHERE status IN ('active', 'completed') ORDER BY 
         CASE WHEN status = 'active' THEN 1 ELSE 2 END, created_at DESC");
-    $borrowers = $stmt->fetchAll();
+    $advance_borrowers = $stmt->fetchAll();
     
     // Convert to the format expected by the frontend - now using unique ID as key
     $result = [];
-    foreach ($borrowers as $borrower) {
+    foreach ($advance_borrowers as $borrower) {
         $result[$borrower['id']] = [
             'id' => $borrower['id'],
             'empId' => $borrower['emp_id'],
@@ -270,7 +285,7 @@ function getBorrowers() {
         ];
     }
     
-    sendJsonResponse(true, 'Borrowers loaded successfully', $result);
+    sendJsonResponse(true, 'advance_borrowers loaded successfully', $result);
 }
 
 /**
@@ -289,7 +304,7 @@ function getBorrowerHistory() {
     
     try {
         // Get employee details
-        $stmt = $pdo->prepare("SELECT * FROM employees WHERE id = ?");
+        $stmt = $pdo->prepare("SELECT * FROM advance_employees WHERE id = ?");
         $stmt->execute([$empId]);
         $employee = $stmt->fetch();
         
@@ -299,7 +314,7 @@ function getBorrowerHistory() {
         }
         
         // Get all borrowing records for this employee (all statuses)
-        $stmt = $pdo->prepare("SELECT * FROM borrowers WHERE emp_id = ? ORDER BY created_at DESC");
+        $stmt = $pdo->prepare("SELECT * FROM advance_borrowers WHERE emp_id = ? ORDER BY created_at DESC");
         $stmt->execute([$empId]);
         $borrowingHistory = $stmt->fetchAll();
         
@@ -358,12 +373,12 @@ function getBorrowerHistory() {
  */
 function getVouchers() {
     $pdo = getDB();
-    $stmt = $pdo->query("SELECT * FROM vouchers ORDER BY created_at DESC");
-    $vouchers = $stmt->fetchAll();
+    $stmt = $pdo->query("SELECT * FROM advance_vouchers ORDER BY created_at DESC");
+    $advance_vouchers = $stmt->fetchAll();
     
     // Convert to the format expected by the frontend
     $result = [];
-    foreach ($vouchers as $voucher) {
+    foreach ($advance_vouchers as $voucher) {
         $result[$voucher['auto_id']] = [
             'auto_id' => $voucher['auto_id'],
             'id' => $voucher['id'],
@@ -376,7 +391,7 @@ function getVouchers() {
         ];
     }
     
-    sendJsonResponse(true, 'Vouchers loaded successfully', $result);
+    sendJsonResponse(true, 'advance_vouchers loaded successfully', $result);
 }
 
 /**
@@ -387,12 +402,12 @@ function getDashboardStats() {
         $pdo = getDB();
         
         // Get counts
-        $employeeCount = $pdo->query("SELECT COUNT(*) FROM employees WHERE status = 'active'")->fetchColumn();
-        $borrowerCount = $pdo->query("SELECT COUNT(*) FROM borrowers WHERE status = 'active'")->fetchColumn();
-        $voucherCount = $pdo->query("SELECT COUNT(*) FROM vouchers")->fetchColumn();
+        $employeeCount = $pdo->query("SELECT COUNT(*) FROM advance_employees WHERE status = 'active'")->fetchColumn();
+        $borrowerCount = $pdo->query("SELECT COUNT(*) FROM advance_borrowers WHERE status = 'active'")->fetchColumn();
+        $voucherCount = $pdo->query("SELECT COUNT(*) FROM advance_vouchers")->fetchColumn();
         
         // Get outstanding amount - use 'outstanding_amount' column
-        $outstandingAmount = $pdo->query("SELECT COALESCE(SUM(outstanding_amount), 0) FROM borrowers WHERE status = 'active'")->fetchColumn();
+        $outstandingAmount = $pdo->query("SELECT COALESCE(SUM(outstanding_amount), 0) FROM advance_borrowers WHERE status = 'active'")->fetchColumn();
         
         $stats = [
             'totalEmployees' => (int)$employeeCount,
@@ -425,7 +440,7 @@ function addEmployee() {
     
     try {
         // Check if employee ID already exists
-        $stmt = $pdo->prepare("SELECT id FROM employees WHERE id = ?");
+        $stmt = $pdo->prepare("SELECT id FROM advance_employees WHERE id = ?");
         $stmt->execute([$id]);
         if ($stmt->fetch()) {
             sendJsonResponse(false, 'Employee ID already exists');
@@ -433,11 +448,11 @@ function addEmployee() {
         }
         
         // Insert new employee with only ID and name
-        $stmt = $pdo->prepare("INSERT INTO employees (id, name) VALUES (?, ?)");
+        $stmt = $pdo->prepare("INSERT INTO advance_employees (id, name) VALUES (?, ?)");
         $stmt->execute([$id, $name]);
         
         // Get the created_at timestamp
-        $stmt = $pdo->prepare("SELECT created_at FROM employees WHERE id = ?");
+        $stmt = $pdo->prepare("SELECT created_at FROM advance_employees WHERE id = ?");
         $stmt->execute([$id]);
         $createdAt = $stmt->fetchColumn();
         
@@ -474,7 +489,7 @@ function addBorrower() {
     
     try {
         // Check if employee exists
-        $stmt = $pdo->prepare("SELECT id FROM employees WHERE id = ?");
+        $stmt = $pdo->prepare("SELECT id FROM advance_employees WHERE id = ?");
         $stmt->execute([$empId]);
         if (!$stmt->fetch()) {
             sendJsonResponse(false, 'Employee ID not found');
@@ -483,7 +498,7 @@ function addBorrower() {
         
         // If application number is provided, check if it's unique
         if (!empty($applicationNo)) {
-            $stmt = $pdo->prepare("SELECT id FROM borrowers WHERE application_no = ?");
+            $stmt = $pdo->prepare("SELECT id FROM advance_borrowers WHERE application_no = ?");
             $stmt->execute([$applicationNo]);
             if ($stmt->fetch()) {
                 sendJsonResponse(false, 'Application number already exists');
@@ -493,28 +508,29 @@ function addBorrower() {
         
         // Allow multiple borrowings per employee - remove the restriction
         // Check if there's already an active borrowing (warn but allow)
-        $stmt = $pdo->prepare("SELECT COUNT(*) FROM borrowers WHERE emp_id = ? AND status = 'active'");
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM advance_borrowers WHERE emp_id = ? AND status = 'active'");
         $stmt->execute([$empId]);
         $activeCount = $stmt->fetchColumn();
         
         // Insert new borrower (outstanding_amount will be same as amount initially)
+        $dateForSQL = str_replace('-', '', $disbursedDate); // Convert to YYYYMMDD format
         if (!empty($applicationNo)) {
-            $stmt = $pdo->prepare("INSERT INTO borrowers (emp_id, name, amount, outstanding_amount, emi, months, disbursed_date, application_no) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->execute([$empId, $name, $amount, $amount, $emi, $months, $disbursedDate, $applicationNo]);
+            $stmt = $pdo->prepare("INSERT INTO advance_borrowers (emp_id, name, amount, outstanding_amount, emi, months, disbursed_date, application_no) VALUES (?, ?, ?, ?, ?, ?, CAST(? AS DATE), ?)");
+            $stmt->execute([$empId, $name, $amount, $amount, $emi, $months, $dateForSQL, $applicationNo]);
         } else {
             // Auto-generate application number based on borrower ID
-            $stmt = $pdo->prepare("INSERT INTO borrowers (emp_id, name, amount, outstanding_amount, emi, months, disbursed_date) VALUES (?, ?, ?, ?, ?, ?, ?)");
-            $stmt->execute([$empId, $name, $amount, $amount, $emi, $months, $disbursedDate]);
+            $stmt = $pdo->prepare("INSERT INTO advance_borrowers (emp_id, name, amount, outstanding_amount, emi, months, disbursed_date) VALUES (?, ?, ?, ?, ?, ?, CAST(? AS DATE))");
+            $stmt->execute([$empId, $name, $amount, $amount, $emi, $months, $dateForSQL]);
             
             // Get the inserted record ID and update with application number
             $borrowerId = $pdo->lastInsertId();
             $autoAppNo = 'APP' . str_pad($borrowerId, 6, '0', STR_PAD_LEFT);
-            $stmt = $pdo->prepare("UPDATE borrowers SET application_no = ? WHERE id = ?");
+            $stmt = $pdo->prepare("UPDATE advance_borrowers SET application_no = ? WHERE id = ?");
             $stmt->execute([$autoAppNo, $borrowerId]);
         }
         
         // Get the created borrower details
-        $stmt = $pdo->prepare("SELECT * FROM borrowers WHERE id = ?");
+        $stmt = $pdo->prepare("SELECT * FROM advance_borrowers WHERE id = ?");
         $stmt->execute([$borrowerId]);
         $borrower = $stmt->fetch();
         
@@ -580,7 +596,7 @@ function addVoucher() {
         $pdo->beginTransaction();
         
         // Check if employee exists
-        $stmt = $pdo->prepare("SELECT id FROM employees WHERE id = ?");
+        $stmt = $pdo->prepare("SELECT id FROM advance_employees WHERE id = ?");
         $stmt->execute([$empId]);
         if (!$stmt->fetch()) {
             $pdo->rollBack();
@@ -588,8 +604,9 @@ function addVoucher() {
             return;
         }
         
-        // Insert new voucher with application number
-        $stmt = $pdo->prepare("INSERT INTO vouchers (id, emp_id, emp_name, voucher_date, amount, month, application_no) VALUES (?, ?, ?, ?, ?, ?, ?)");
+        // Insert new voucher with application number using direct date insertion
+        // This ensures the exact date from input is stored without any increment/decrement
+        $stmt = $pdo->prepare("INSERT INTO advance_vouchers (id, emp_id, emp_name, voucher_date, amount, month, application_no) VALUES (?, ?, ?, ?, ?, ?, ?)");
         $stmt->execute([$id, $empId, $empName, $date, $amount, $month, $applicationNo]);
         
         // Get the auto-generated ID
@@ -599,7 +616,7 @@ function addVoucher() {
         
         if (!empty($applicationNo)) {
             // Find the specific borrower record by application number
-            $borrowerStmt = $pdo->prepare("SELECT id, amount, outstanding_amount FROM borrowers WHERE application_no = ? AND status = 'active'");
+            $borrowerStmt = $pdo->prepare("SELECT id, amount, outstanding_amount FROM advance_borrowers WHERE application_no = ? AND status = 'active'");
             $borrowerStmt->execute([$applicationNo]);
             $borrower = $borrowerStmt->fetch();
             
@@ -611,19 +628,19 @@ function addVoucher() {
                 
                 if ($newOutstanding <= 0) {
                     // Mark this specific borrower record as completed
-                    $updateStmt = $pdo->prepare("UPDATE borrowers SET outstanding_amount = 0, status = 'completed' WHERE id = ?");
+                    $updateStmt = $pdo->prepare("UPDATE advance_borrowers SET outstanding_amount = 0, status = 'completed' WHERE id = ?");
                     $updateStmt->execute([$borrowerId]);
                     $borrowerUpdate = ['status' => 'completed', 'originalAmount' => $originalAmount, 'newOutstanding' => 0, 'reducedBy' => $amount, 'applicationNo' => $applicationNo];
                 } else {
                     // Reduce only the outstanding amount for this specific borrower
-                    $updateStmt = $pdo->prepare("UPDATE borrowers SET outstanding_amount = ? WHERE id = ?");
+                    $updateStmt = $pdo->prepare("UPDATE advance_borrowers SET outstanding_amount = ? WHERE id = ?");
                     $updateStmt->execute([$newOutstanding, $borrowerId]);
                     $borrowerUpdate = ['status' => 'active', 'originalAmount' => $originalAmount, 'newOutstanding' => $newOutstanding, 'reducedBy' => $amount, 'applicationNo' => $applicationNo];
                 }
             }
         } else {
             // Fallback: Check if employee has any active borrower record (for backward compatibility)
-            $borrowerStmt = $pdo->prepare("SELECT id, amount, outstanding_amount FROM borrowers WHERE emp_id = ? AND status = 'active' ORDER BY created_at ASC LIMIT 1");
+            $borrowerStmt = $pdo->prepare("SELECT TOP 1 id, amount, outstanding_amount FROM advance_borrowers WHERE emp_id = ? AND status = 'active' ORDER BY created_at ASC");
             $borrowerStmt->execute([$empId]);
             $borrower = $borrowerStmt->fetch();
             
@@ -635,12 +652,12 @@ function addVoucher() {
                 
                 if ($newOutstanding <= 0) {
                     // Mark borrower as completed
-                    $updateStmt = $pdo->prepare("UPDATE borrowers SET outstanding_amount = 0, status = 'completed' WHERE id = ?");
+                    $updateStmt = $pdo->prepare("UPDATE advance_borrowers SET outstanding_amount = 0, status = 'completed' WHERE id = ?");
                     $updateStmt->execute([$borrowerId]);
                     $borrowerUpdate = ['status' => 'completed', 'originalAmount' => $originalAmount, 'newOutstanding' => 0, 'reducedBy' => $amount];
                 } else {
                     // Reduce only the outstanding amount
-                    $updateStmt = $pdo->prepare("UPDATE borrowers SET outstanding_amount = ? WHERE id = ?");
+                    $updateStmt = $pdo->prepare("UPDATE advance_borrowers SET outstanding_amount = ? WHERE id = ?");
                     $updateStmt->execute([$newOutstanding, $borrowerId]);
                     $borrowerUpdate = ['status' => 'active', 'originalAmount' => $originalAmount, 'newOutstanding' => $newOutstanding, 'reducedBy' => $amount];
                 }
@@ -702,7 +719,7 @@ function updateEmployee() {
     $name = trim($_POST['name']);
     
     try {
-        $stmt = $pdo->prepare("UPDATE employees SET name = ? WHERE id = ?");
+        $stmt = $pdo->prepare("UPDATE advance_employees SET name = ? WHERE id = ?");
         $stmt->execute([$name, $id]);
         
         if ($stmt->rowCount() > 0) {
@@ -742,7 +759,7 @@ function updateBorrower() {
     
     try {
         // Get current record to calculate new outstanding amount using the specific ID
-        $stmt = $pdo->prepare("SELECT amount, outstanding_amount FROM borrowers WHERE id = ? AND status = 'active'");
+        $stmt = $pdo->prepare("SELECT amount, outstanding_amount FROM advance_borrowers WHERE id = ? AND status = 'active'");
         $stmt->execute([$id]);
         $currentRecord = $stmt->fetch(PDO::FETCH_ASSOC);
         
@@ -768,7 +785,7 @@ function updateBorrower() {
         }
         
         // Update the record with new outstanding amount using the specific ID
-        $stmt = $pdo->prepare("UPDATE borrowers SET emp_id = ?, name = ?, amount = ?, outstanding_amount = ?, emi = ?, months = ?, disbursed_date = ? WHERE id = ? AND status = 'active'");
+        $stmt = $pdo->prepare("UPDATE advance_borrowers SET emp_id = ?, name = ?, amount = ?, outstanding_amount = ?, emi = ?, months = ?, disbursed_date = ? WHERE id = ? AND status = 'active'");
         $stmt->execute([$empId, $name, $amount, $newOutstanding, $emi, $months, $disbursedDate, $id]);
         
         if ($stmt->rowCount() > 0) {
@@ -802,7 +819,7 @@ function updateVoucher() {
     $month = trim($_POST['month']);
     
     try {
-        $stmt = $pdo->prepare("UPDATE vouchers SET id = ?, emp_id = ?, emp_name = ?, voucher_date = ?, amount = ?, month = ? WHERE auto_id = ?");
+        $stmt = $pdo->prepare("UPDATE advance_vouchers SET id = ?, emp_id = ?, emp_name = ?, voucher_date = ?, amount = ?, month = ? WHERE auto_id = ?");
         $stmt->execute([$id, $empId, $empName, $date, $amount, $month, $autoId]);
         
         if ($stmt->rowCount() > 0) {
@@ -830,7 +847,7 @@ function deleteEmployee() {
     $id = trim($_POST['id']);
     
     try {
-        $stmt = $pdo->prepare("UPDATE employees SET status = 'inactive' WHERE id = ?");
+        $stmt = $pdo->prepare("UPDATE advance_employees SET status = 'inactive' WHERE id = ?");
         $stmt->execute([$id]);
         
         if ($stmt->rowCount() > 0) {
@@ -860,7 +877,7 @@ function deleteBorrower() {
     
     try {
         // Update status to cancelled for the specific borrower record
-        $stmt = $pdo->prepare("UPDATE borrowers SET status = 'cancelled' WHERE id = ? AND status = 'active'");
+        $stmt = $pdo->prepare("UPDATE advance_borrowers SET status = 'cancelled' WHERE id = ? AND status = 'active'");
         $stmt->execute([$borrowerId]);
         
         if ($stmt->rowCount() > 0) {
@@ -888,7 +905,7 @@ function deleteVoucher() {
     $autoId = intval($_POST['auto_id']);
     
     try {
-        $stmt = $pdo->prepare("DELETE FROM vouchers WHERE auto_id = ?");
+        $stmt = $pdo->prepare("DELETE FROM advance_vouchers WHERE auto_id = ?");
         $stmt->execute([$autoId]);
         
         if ($stmt->rowCount() > 0) {
@@ -936,7 +953,7 @@ function sendJsonResponse($success, $message, $data = null) {
 }
 
 /**
- * Import multiple employees from Excel data
+ * Import multiple advance_employees from Excel data
  */
 function importEmployees() {
     $pdo = getDB();
@@ -950,7 +967,7 @@ function importEmployees() {
         return;
     }
     
-    $employees = $data['employees'];
+    $advance_employees = $data['employees'];
     $successCount = 0;
     $errorCount = 0;
     $errors = [];
@@ -959,7 +976,7 @@ function importEmployees() {
         // Start transaction
         $pdo->beginTransaction();
         
-        foreach ($employees as $index => $employee) {
+        foreach ($advance_employees as $index => $employee) {
             // Validate required fields
             if (empty($employee['id']) || empty($employee['name'])) {
                 $errors[] = "Row " . ($index + 1) . ": Employee ID and Name are required";
@@ -971,7 +988,7 @@ function importEmployees() {
             $name = trim($employee['name']);
             
             // Check if employee ID already exists
-            $stmt = $pdo->prepare("SELECT id FROM employees WHERE id = ?");
+            $stmt = $pdo->prepare("SELECT id FROM advance_employees WHERE id = ?");
             $stmt->execute([$id]);
             if ($stmt->fetch()) {
                 $errors[] = "Row " . ($index + 1) . ": Employee ID '$id' already exists";
@@ -980,7 +997,7 @@ function importEmployees() {
             }
             
             // Insert employee
-            $stmt = $pdo->prepare("INSERT INTO employees (id, name) VALUES (?, ?)");
+            $stmt = $pdo->prepare("INSERT INTO advance_employees (id, name) VALUES (?, ?)");
             if ($stmt->execute([$id, $name])) {
                 $successCount++;
             } else {
@@ -992,7 +1009,7 @@ function importEmployees() {
         // Commit transaction
         $pdo->commit();
         
-        $message = "Import completed: $successCount employees imported";
+        $message = "Import completed: $successCount advance_employees imported";
         if ($errorCount > 0) {
             $message .= ", $errorCount errors occurred";
         }
@@ -1008,7 +1025,7 @@ function importEmployees() {
         $pdo->rollback();
         
         // Log the full error for debugging
-        error_log("Import employees error: " . $e->getMessage());
+        error_log("Import advance_employees error: " . $e->getMessage());
         
         // Provide user-friendly error message
         $userMessage = 'Database error occurred during employee import';
@@ -1029,7 +1046,7 @@ function importEmployees() {
 }
 
 /**
- * Import multiple borrowers from Excel data
+ * Import multiple advance_borrowers from Excel data
  */
 function importBorrowers() {
     $pdo = getDB();
@@ -1043,7 +1060,7 @@ function importBorrowers() {
         return;
     }
     
-    $borrowers = $data['borrowers'];
+    $advance_borrowers = $data['borrowers'];
     $successCount = 0;
     $errorCount = 0;
     $errors = [];
@@ -1052,7 +1069,7 @@ function importBorrowers() {
         // Start transaction
         $pdo->beginTransaction();
         
-        foreach ($borrowers as $index => $borrower) {
+        foreach ($advance_borrowers as $index => $borrower) {
             // Validate required fields
             if (empty($borrower['empId']) || empty($borrower['name']) || empty($borrower['amount']) || 
                 empty($borrower['emi']) || empty($borrower['month']) || empty($borrower['disbursedDate'])) {
@@ -1070,7 +1087,7 @@ function importBorrowers() {
             $applicationNo = trim($borrower['applicationNo'] ?? '');
             
             // Check if employee exists
-            $stmt = $pdo->prepare("SELECT id FROM employees WHERE id = ?");
+            $stmt = $pdo->prepare("SELECT id FROM advance_employees WHERE id = ?");
             $stmt->execute([$empId]);
             if (!$stmt->fetch()) {
                 $errors[] = "Row " . ($index + 1) . ": Employee ID '$empId' not found";
@@ -1080,7 +1097,7 @@ function importBorrowers() {
             
             // If application number is provided, check if it's unique
             if (!empty($applicationNo)) {
-                $stmt = $pdo->prepare("SELECT id FROM borrowers WHERE application_no = ?");
+                $stmt = $pdo->prepare("SELECT id FROM advance_borrowers WHERE application_no = ?");
                 $stmt->execute([$applicationNo]);
                 if ($stmt->fetch()) {
                     $errors[] = "Row " . ($index + 1) . ": Application number '$applicationNo' already exists";
@@ -1091,14 +1108,15 @@ function importBorrowers() {
             
             // Allow multiple borrowings per employee - remove the restriction
             // Check if there's already an active borrowing (warn but allow)
-            $stmt = $pdo->prepare("SELECT COUNT(*) FROM borrowers WHERE emp_id = ? AND status = 'active'");
+            $stmt = $pdo->prepare("SELECT COUNT(*) FROM advance_borrowers WHERE emp_id = ? AND status = 'active'");
             $stmt->execute([$empId]);
             $activeCount = $stmt->fetchColumn();
             
             // Insert borrower with or without application number
+            $dateForSQL = str_replace('-', '', $disbursedDate); // Convert to YYYYMMDD format
             if (!empty($applicationNo)) {
-                $stmt = $pdo->prepare("INSERT INTO borrowers (emp_id, name, amount, outstanding_amount, emi, months, disbursed_date, application_no) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-                if ($stmt->execute([$empId, $name, $amount, $amount, $emi, $months, $disbursedDate, $applicationNo])) {
+                $stmt = $pdo->prepare("INSERT INTO advance_borrowers (emp_id, name, amount, outstanding_amount, emi, months, disbursed_date, application_no) VALUES (?, ?, ?, ?, ?, ?, CAST(? AS DATE), ?)");
+                if ($stmt->execute([$empId, $name, $amount, $amount, $emi, $months, $dateForSQL, $applicationNo])) {
                     $successCount++;
                 } else {
                     $errors[] = "Row " . ($index + 1) . ": Failed to insert borrower '$empId'";
@@ -1106,12 +1124,12 @@ function importBorrowers() {
                 }
             } else {
                 // Auto-generate application number
-                $stmt = $pdo->prepare("INSERT INTO borrowers (emp_id, name, amount, outstanding_amount, emi, months, disbursed_date) VALUES (?, ?, ?, ?, ?, ?, ?)");
-                if ($stmt->execute([$empId, $name, $amount, $amount, $emi, $months, $disbursedDate])) {
+                $stmt = $pdo->prepare("INSERT INTO advance_borrowers (emp_id, name, amount, outstanding_amount, emi, months, disbursed_date) VALUES (?, ?, ?, ?, ?, ?, CAST(? AS DATE))");
+                if ($stmt->execute([$empId, $name, $amount, $amount, $emi, $months, $dateForSQL])) {
                     // Get the inserted record ID and update with application number
                     $borrowerId = $pdo->lastInsertId();
                     $autoAppNo = 'APP' . str_pad($borrowerId, 6, '0', STR_PAD_LEFT);
-                    $updateStmt = $pdo->prepare("UPDATE borrowers SET application_no = ? WHERE id = ?");
+                    $updateStmt = $pdo->prepare("UPDATE advance_borrowers SET application_no = ? WHERE id = ?");
                     $updateStmt->execute([$autoAppNo, $borrowerId]);
                     $successCount++;
                 } else {
@@ -1124,7 +1142,7 @@ function importBorrowers() {
         // Commit transaction
         $pdo->commit();
         
-        $message = "Import completed: $successCount borrowers imported";
+        $message = "Import completed: $successCount advance_borrowers imported";
         if ($errorCount > 0) {
             $message .= ", $errorCount errors occurred";
         }
@@ -1140,7 +1158,7 @@ function importBorrowers() {
         $pdo->rollback();
         
         // Log the full error for debugging
-        error_log("Import borrowers error: " . $e->getMessage());
+        error_log("Import advance_borrowers error: " . $e->getMessage());
         
         // Provide user-friendly error message
         $userMessage = 'Database error occurred during borrower import';
@@ -1169,7 +1187,7 @@ function importBorrowers() {
 }
 
 /**
- * Import multiple vouchers from Excel data
+ * Import multiple advance_vouchers from Excel data
  */
 function importVouchers() {
     $pdo = getDB();
@@ -1183,17 +1201,17 @@ function importVouchers() {
         return;
     }
     
-    $vouchers = $data['vouchers'];
+    $advance_vouchers = $data['vouchers'];
     $successCount = 0;
     $errorCount = 0;
     $borrowerUpdateCount = 0;
     $errors = [];
-    
+
     try {
         // Start transaction
         $pdo->beginTransaction();
         
-        foreach ($vouchers as $index => $voucher) {
+        foreach ($advance_vouchers as $index => $voucher) {
             // Validate required fields
             if (empty($voucher['id']) || empty($voucher['empId']) || empty($voucher['empName']) || 
                 empty($voucher['date']) || empty($voucher['amount']) || empty($voucher['month'])) {
@@ -1210,8 +1228,41 @@ function importVouchers() {
             $month = trim($voucher['month']);
             $applicationNo = isset($voucher['applicationNo']) ? trim($voucher['applicationNo']) : '';
             
+            // Additional validation
+            if (empty($applicationNo)) {
+                $applicationNo = null; // Set to NULL for database
+            }
+            
+            // Validate voucher ID length and format
+            if (strlen($id) > 20) {
+                $errors[] = "Row " . ($index + 1) . ": Voucher ID '$id' is too long (max 20 characters)";
+                $errorCount++;
+                continue;
+            }
+            
+            // Validate employee ID length
+            if (strlen($empId) > 20) {
+                $errors[] = "Row " . ($index + 1) . ": Employee ID '$empId' is too long (max 20 characters)";
+                $errorCount++;
+                continue;
+            }
+            
+            // Validate amount
+            if ($amount <= 0) {
+                $errors[] = "Row " . ($index + 1) . ": Amount must be greater than 0";
+                $errorCount++;
+                continue;
+            }
+            
+            // Validate date format
+            if (!$date || $date == $voucher['date']) {
+                $errors[] = "Row " . ($index + 1) . ": Invalid date format. Please use DD-MM-YYYY format";
+                $errorCount++;
+                continue;
+            }
+            
             // Check if employee exists
-            $stmt = $pdo->prepare("SELECT id FROM employees WHERE id = ?");
+            $stmt = $pdo->prepare("SELECT id FROM advance_employees WHERE id = ?");
             $stmt->execute([$empId]);
             if (!$stmt->fetch()) {
                 $errors[] = "Row " . ($index + 1) . ": Employee ID '$empId' not found";
@@ -1223,7 +1274,7 @@ function importVouchers() {
             $borrowerUpdate = null;
             if (!empty($applicationNo)) {
                 // Check if borrower record exists and is active
-                $borrowerStmt = $pdo->prepare("SELECT id, amount, outstanding_amount FROM borrowers WHERE application_no = ? AND status = 'active'");
+                $borrowerStmt = $pdo->prepare("SELECT id, amount, outstanding_amount FROM advance_borrowers WHERE application_no = ? AND status = 'active'");
                 $borrowerStmt->execute([$applicationNo]);
                 $borrower = $borrowerStmt->fetch();
                 
@@ -1244,25 +1295,50 @@ function importVouchers() {
                 }
             }
             
-            // Insert voucher with application number
-            $stmt = $pdo->prepare("INSERT INTO vouchers (id, emp_id, emp_name, voucher_date, amount, month, application_no) VALUES (?, ?, ?, ?, ?, ?, ?)");
-            if ($stmt->execute([$id, $empId, $empName, $date, $amount, $month, $applicationNo])) {
-                $successCount++;
+            // Insert voucher with proper NULL handling for application number
+            try {
+                // Use direct date string insertion to avoid any timezone/conversion issues
+                // This ensures the exact date from Excel is stored without increment/decrement
+                $stmt = $pdo->prepare("INSERT INTO advance_vouchers (id, emp_id, emp_name, voucher_date, amount, month, application_no) VALUES (?, ?, ?, ?, ?, ?, ?)");
+                $applicationNoValue = $applicationNo === '' ? null : $applicationNo;
+                $result = $stmt->execute([$id, $empId, $empName, $date, $amount, $month, $applicationNoValue]);
                 
-                // Update borrower outstanding amount if application number was provided and found
-                if ($borrowerUpdate) {
-                    $updateStmt = $pdo->prepare("UPDATE borrowers SET outstanding_amount = ? WHERE id = ?");
-                    if ($updateStmt->execute([$borrowerUpdate['newOutstanding'], $borrowerUpdate['id']])) {
-                        $borrowerUpdateCount++;
-                        // Check if borrower should be marked as completed
-                        if ($borrowerUpdate['newOutstanding'] == 0) {
-                            $statusStmt = $pdo->prepare("UPDATE borrowers SET status = 'completed' WHERE id = ?");
-                            $statusStmt->execute([$borrowerUpdate['id']]);
+                if ($result) {
+                    $successCount++;
+                    
+                    // Update borrower outstanding amount if application number was provided and found
+                    if ($borrowerUpdate) {
+                        $updateStmt = $pdo->prepare("UPDATE advance_borrowers SET outstanding_amount = ? WHERE id = ?");
+                        if ($updateStmt->execute([$borrowerUpdate['newOutstanding'], $borrowerUpdate['id']])) {
+                            $borrowerUpdateCount++;
+                            // Check if borrower should be marked as completed
+                            if ($borrowerUpdate['newOutstanding'] == 0) {
+                                $statusStmt = $pdo->prepare("UPDATE advance_borrowers SET status = 'completed' WHERE id = ?");
+                                $statusStmt->execute([$borrowerUpdate['id']]);
+                            }
                         }
                     }
+                } else {
+                    $errorInfo = $stmt->errorInfo();
+                    $errors[] = "Row " . ($index + 1) . ": Failed to insert voucher '$id' - " . $errorInfo[2];
+                    $errorCount++;
                 }
-            } else {
-                $errors[] = "Row " . ($index + 1) . ": Failed to insert voucher '$id'";
+            } catch (PDOException $insertException) {
+                // Handle database errors during insert (excluding duplicate-related errors)
+                $errorMessage = $insertException->getMessage();
+                $errorCode = $insertException->getCode();
+                
+                if ($errorCode == 23000) {
+                    if (strpos($errorMessage, 'FK_vouchers_emp_id') !== false) {
+                        $errors[] = "Row " . ($index + 1) . ": Employee ID '$empId' does not exist";
+                    } elseif (strpos($errorMessage, 'FK_vouchers_application_no') !== false) {
+                        $errors[] = "Row " . ($index + 1) . ": Application number '$applicationNo' does not exist";
+                    } else {
+                        $errors[] = "Row " . ($index + 1) . ": Database constraint violation for voucher '$id' - " . $errorMessage;
+                    }
+                } else {
+                    $errors[] = "Row " . ($index + 1) . ": Database error inserting voucher '$id' - " . $errorMessage;
+                }
                 $errorCount++;
             }
         }
@@ -1270,7 +1346,7 @@ function importVouchers() {
         // Commit transaction
         $pdo->commit();
         
-        $message = "Import completed: $successCount vouchers imported";
+        $message = "Import completed: $successCount advance_vouchers imported";
         if ($borrowerUpdateCount > 0) {
             $message .= ", $borrowerUpdateCount borrower amounts updated";
         }
@@ -1290,7 +1366,7 @@ function importVouchers() {
         $pdo->rollback();
         
         // Log the full error for debugging
-        error_log("Import vouchers error: " . $e->getMessage());
+        error_log("Import advance_vouchers error: " . $e->getMessage());
         
         // Provide user-friendly error message based on error type
         $userMessage = 'Database error occurred during import';
@@ -1298,20 +1374,29 @@ function importVouchers() {
         $errorMessage = $e->getMessage();
         
         // Handle specific database errors
-        if (strpos($errorMessage, 'Duplicate entry') !== false) {
-            $userMessage = 'Duplicate entry found - some voucher data already exists';
-        } elseif (strpos($errorMessage, 'foreign key constraint') !== false || strpos($errorMessage, 'Cannot add or update') !== false) {
-            $userMessage = 'Invalid employee reference - please ensure all employees exist';
-        } elseif (strpos($errorMessage, 'Data too long') !== false) {
+        if (strpos($errorMessage, 'foreign key constraint') !== false || strpos($errorMessage, 'FOREIGN KEY constraint') !== false || strpos($errorMessage, 'Cannot add or update') !== false) {
+            $userMessage = 'Invalid employee reference - please ensure all employee IDs exist in the system';
+        } elseif (strpos($errorMessage, 'CHECK constraint') !== false) {
+            $userMessage = 'Invalid data values - please check status fields and data formats';
+        } elseif (strpos($errorMessage, 'Data too long') !== false || strpos($errorMessage, 'String or binary data would be truncated') !== false) {
             $userMessage = 'Some data values are too long for database fields';
-        } elseif (strpos($errorMessage, 'Incorrect date') !== false || strpos($errorMessage, 'Invalid date') !== false) {
-            $userMessage = 'Invalid date format detected in import data';
-        } elseif (strpos($errorMessage, 'Incorrect decimal') !== false) {
-            $userMessage = 'Invalid amount format detected in import data';
+        } elseif (strpos($errorMessage, 'Incorrect date') !== false || strpos($errorMessage, 'Invalid date') !== false || strpos($errorMessage, 'Conversion failed') !== false) {
+            $userMessage = 'Invalid date format detected in import data - please use DD-MM-YYYY format';
+        } elseif (strpos($errorMessage, 'Incorrect decimal') !== false || strpos($errorMessage, 'Invalid column type') !== false) {
+            $userMessage = 'Invalid amount format detected - please ensure amounts are valid numbers';
         } elseif (strpos($errorMessage, 'server has gone away') !== false) {
             $userMessage = 'Database connection lost - please try importing smaller batches';
-        } elseif (strpos($errorMessage, 'Lock wait timeout') !== false) {
+        } elseif (strpos($errorMessage, 'Lock wait timeout') !== false || strpos($errorMessage, 'timeout') !== false) {
             $userMessage = 'Database is busy - please try again in a moment';
+        } elseif ($errorCode == 23000) {
+            // SQL Server constraint violation error (excluding duplicates as they are now allowed)
+            if (strpos($errorMessage, 'FK_vouchers_emp_id') !== false) {
+                $userMessage = 'Invalid employee ID - employee does not exist in the system';
+            } elseif (strpos($errorMessage, 'FK_vouchers_application_no') !== false) {
+                $userMessage = 'Invalid application number - borrower record does not exist';
+            } else {
+                $userMessage = 'Data constraint violation - please check your import data for invalid references';
+            }
         }
         
         sendJsonResponse(false, $userMessage, [
@@ -1356,13 +1441,13 @@ function updateUserEmail() {
     
     try {
         // Debug: Check current email before update
-        $currentStmt = $pdo->prepare("SELECT email FROM users WHERE id = ?");
+        $currentStmt = $pdo->prepare("SELECT email FROM advance_users WHERE id = ?");
         $currentStmt->execute([$_SESSION['user_id']]);
         $currentUser = $currentStmt->fetch();
         error_log("Current email in DB: " . ($currentUser['email'] ?? 'not found'));
         
         // Check if email already exists
-        $checkStmt = $pdo->prepare("SELECT id FROM users WHERE email = ? AND id != ?");
+        $checkStmt = $pdo->prepare("SELECT id FROM advance_users WHERE email = ? AND id != ?");
         $checkStmt->execute([$newEmail, $_SESSION['user_id']]);
         
         if ($checkStmt->fetch()) {
@@ -1371,7 +1456,7 @@ function updateUserEmail() {
         }
         
         // Update email
-        $updateStmt = $pdo->prepare("UPDATE users SET email = ? WHERE id = ?");
+        $updateStmt = $pdo->prepare("UPDATE advance_users SET email = ? WHERE id = ?");
         $result = $updateStmt->execute([$newEmail, $_SESSION['user_id']]);
         
         // Debug: Check if update was successful
@@ -1380,7 +1465,7 @@ function updateUserEmail() {
         
         if ($result && $updateStmt->rowCount() > 0) {
             // Verify the update in database
-            $verifyStmt = $pdo->prepare("SELECT email FROM users WHERE id = ?");
+            $verifyStmt = $pdo->prepare("SELECT email FROM advance_users WHERE id = ?");
             $verifyStmt->execute([$_SESSION['user_id']]);
             $updatedUser = $verifyStmt->fetch();
             error_log("Email after update in DB: " . ($updatedUser['email'] ?? 'not found'));
@@ -1434,7 +1519,7 @@ function changeUserPassword() {
     
     try {
         // Get current password hash
-        $stmt = $pdo->prepare("SELECT password FROM users WHERE id = ?");
+        $stmt = $pdo->prepare("SELECT password FROM advance_users WHERE id = ?");
         $stmt->execute([$_SESSION['user_id']]);
         $user = $stmt->fetch();
         
@@ -1453,7 +1538,7 @@ function changeUserPassword() {
         $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
         
         // Update password
-        $updateStmt = $pdo->prepare("UPDATE users SET password = ? WHERE id = ?");
+        $updateStmt = $pdo->prepare("UPDATE advance_users SET password = ? WHERE id = ?");
         
         if ($updateStmt->execute([$hashedPassword, $_SESSION['user_id']])) {
             error_log("Password updated successfully for user ID: " . $_SESSION['user_id']);
