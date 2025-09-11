@@ -392,6 +392,8 @@ function showSection(sectionId) {
         } else if (sectionId === 'vouchers') {
             renderVoucherTable();
             initializeSearchForSection('vouchers');
+        } else if (sectionId === 'transactions') {
+            loadTransactionHistory();
         } else if (sectionId === 'reports') {
             updateReportsTable();
         }
@@ -691,6 +693,248 @@ function viewEmployeeVouchers(empId) {
         console.error('viewModalBody element not found!');
         alert('Modal element not found. Please refresh the page.');
     }
+}
+
+// ========================================
+// Transaction History Functions
+// ========================================
+
+/**
+ * Load and display transaction history
+ */
+async function loadTransactionHistory() {
+    try {
+        const filters = getTransactionFilters();
+        const queryParams = new URLSearchParams(filters);
+        
+        const response = await fetch(`api.php?action=get_transaction_history&${queryParams}`, {
+            credentials: 'same-origin'
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            const data = result.data;
+            updateTransactionStats(data.summary);
+            renderTransactionTable(data.transactions);
+        } else {
+            console.error('Transaction history error:', result.message);
+            showNotification(`Error loading transaction history: ${result.message}`, 'error');
+        }
+    } catch (error) {
+        console.error('Error loading transaction history:', error);
+        showNotification(`Error loading transaction history: ${error.message}`, 'error');
+    }
+}
+
+/**
+ * Get current filter values
+ */
+function getTransactionFilters() {
+    const filters = {};
+    
+    const employeeFilter = document.getElementById('filterEmployee');
+    if (employeeFilter && employeeFilter.value.trim()) {
+        filters.employee_id = employeeFilter.value.trim();
+    }
+    
+    return filters;
+}
+
+/**
+ * Update transaction statistics display
+ */
+function updateTransactionStats(summary) {
+    const totalTransactionsEl = document.getElementById('total-transactions');
+    const totalAdvancesEl = document.getElementById('total-advances');
+    const totalRepaymentsEl = document.getElementById('total-repayments');
+    const netOutstandingEl = document.getElementById('net-outstanding');
+    
+    if (totalTransactionsEl) totalTransactionsEl.textContent = summary.totalTransactions || '0';
+    if (totalAdvancesEl) totalAdvancesEl.textContent = `₹${(summary.totalAdvances || 0).toLocaleString()}`;
+    if (totalRepaymentsEl) totalRepaymentsEl.textContent = `₹${(summary.totalRepayments || 0).toLocaleString()}`;
+    if (netOutstandingEl) netOutstandingEl.textContent = `₹${(summary.currentOutstanding || 0).toLocaleString()}`;
+}
+
+/**
+ * Render transaction history table
+ */
+function renderTransactionTable(transactions) {
+    const tbody = document.getElementById('transactionHistoryBody');
+    
+    if (!tbody) return;
+    
+    if (!transactions || transactions.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 20px; color: #666;">No transactions found</td></tr>';
+        return;
+    }
+    
+    let html = '';
+    transactions.forEach(transaction => {
+        const statusClass = transaction.status.toLowerCase() === 'active' ? 'status-active' : 
+                           transaction.status.toLowerCase() === 'completed' ? 'status-completed' : 
+                           transaction.status.toLowerCase() === 'pending' ? 'status-pending' : 'status-cancelled';
+        
+        const typeClass = transaction.transaction_type === 'advance' ? 'transaction-outgoing' : 'transaction-incoming';
+        const amountPrefix = transaction.transaction_type === 'advance' ? '-' : '+';
+        
+        // Display voucher number only for voucher transactions, empty for advances
+        const voucherNumber = transaction.voucher_number || '';
+        
+        html += `
+            <tr class="${typeClass}">
+                <td data-label="Date">${transaction.date}</td>
+                <td data-label="Transaction Type">
+                    <span class="transaction-type ${typeClass}">
+                        ${transaction.type}
+                    </span>
+                </td>
+                <td data-label="Employee ID">${transaction.emp_id}</td>
+                <td data-label="Employee Name">${transaction.emp_name}</td>
+                <td data-label="Amount" class="${typeClass}">
+                    <span class="amount-display">
+                        ${amountPrefix}${transaction.amount_formatted}
+                    </span>
+                </td>
+                <td data-label="Description">${transaction.description}</td>
+                <td data-label="Reference">${transaction.reference}</td>
+                <td data-label="Voucher Number" class="voucher-number">${voucherNumber}</td>
+                <td data-label="Status">
+                    <span class="status-badge ${statusClass}">
+                        ${transaction.status}
+                    </span>
+                </td>
+            </tr>
+        `;
+    });
+    
+    tbody.innerHTML = html;
+}
+
+/**
+ * Show/hide transaction filters
+ */
+function showTransactionFilters() {
+    const filtersDiv = document.getElementById('transactionFilters');
+    if (filtersDiv) {
+        filtersDiv.style.display = filtersDiv.style.display === 'none' ? 'block' : 'none';
+    }
+}
+
+/**
+ * Apply transaction filters
+ */
+function applyTransactionFilters() {
+    loadTransactionHistory();
+}
+
+/**
+ * Clear all transaction filters
+ */
+function clearTransactionFilters() {
+    document.getElementById('filterEmployee').value = '';
+    loadTransactionHistory();
+}
+
+/**
+ * Sort transactions by column
+ */
+function sortTransactions(column) {
+    // Implementation for sorting transactions
+    console.log('Sorting transactions by:', column);
+    // This would be implemented to sort the transaction table
+}
+
+/**
+ * View detailed information about a specific transaction
+ */
+function viewTransactionDetails(type, reference, empId) {
+    console.log('Viewing transaction details:', type, reference, empId);
+    
+    let content = '';
+    
+    if (type === 'advance') {
+        // Find the borrower record
+        const borrower = Object.values(data.borrowers || {}).find(b => 
+            b.applicationNo === reference || b.empId === empId
+        );
+        
+        if (borrower) {
+            content = `
+                <div class="transaction-details">
+                    <h3>Advance Transaction Details</h3>
+                    <div class="detail-row"><strong>Transaction Type:</strong> Loan Payment</div>
+                    <div class="detail-row"><strong>Application No:</strong> ${borrower.applicationNo || 'N/A'}</div>
+                    <div class="detail-row"><strong>Employee ID:</strong> ${borrower.empId}</div>
+                    <div class="detail-row"><strong>Employee Name:</strong> ${borrower.name}</div>
+                    <div class="detail-row"><strong>Amount:</strong> ₹${(borrower.amount || 0).toLocaleString()}</div>
+                    <div class="detail-row"><strong>Outstanding:</strong> ₹${(borrower.outstandingAmount || 0).toLocaleString()}</div>
+                    <div class="detail-row"><strong>EMI:</strong> ₹${(borrower.emi || 0).toLocaleString()}</div>
+                    <div class="detail-row"><strong>Months:</strong> ${borrower.months || 'N/A'}</div>
+                    <div class="detail-row"><strong>Disbursed Date:</strong> ${borrower.disbursedDate}</div>
+                    <div class="detail-row"><strong>Status:</strong> ${borrower.status}</div>
+                </div>
+            `;
+        }
+    } else if (type === 'repayment') {
+        // Find the voucher record
+        const voucher = Object.values(data.vouchers || {}).find(v => 
+            v.id === reference || v.applicationNo === reference
+        );
+        
+        if (voucher) {
+            content = `
+                <div class="transaction-details">
+                    <h3>Repayment Transaction Details</h3>
+                    <div class="detail-row"><strong>Transaction Type:</strong> EMI Payment</div>
+                    <div class="detail-row"><strong>Voucher ID:</strong> ${voucher.id}</div>
+                    <div class="detail-row"><strong>Application No:</strong> ${voucher.applicationNo || 'N/A'}</div>
+                    <div class="detail-row"><strong>Employee ID:</strong> ${voucher.empId}</div>
+                    <div class="detail-row"><strong>Employee Name:</strong> ${voucher.empName}</div>
+                    <div class="detail-row"><strong>Amount:</strong> ₹${(voucher.amount || 0).toLocaleString()}</div>
+                    <div class="detail-row"><strong>Date:</strong> ${voucher.date}</div>
+                    <div class="detail-row"><strong>Month:</strong> ${voucher.month}</div>
+                </div>
+            `;
+        }
+    }
+    
+    if (content) {
+        document.getElementById('viewModalBody').innerHTML = content;
+        openModal('viewModal');
+    } else {
+        showNotification('Transaction details not found', 'error');
+    }
+}
+
+/**
+ * Export transaction history to Excel
+ */
+function exportTransactionHistory() {
+    try {
+        const filters = getTransactionFilters();
+        const queryParams = new URLSearchParams(filters);
+        
+        // Open export URL in new window
+        window.open(`api.php?action=export_transaction_history&${queryParams}`, '_blank');
+        
+        showNotification('Transaction history export started', 'success');
+    } catch (error) {
+        console.error('Error exporting transaction history:', error);
+        showNotification('Error exporting transaction history', 'error');
+    }
+}
+
+/**
+ * Refresh transaction history data
+ */
+function refreshTransactionHistory() {
+    showNotification('Refreshing transaction history...', 'info');
+    loadTransactionHistory();
 }
 
 // ========================================

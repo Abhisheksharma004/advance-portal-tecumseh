@@ -80,6 +80,14 @@ $currentUser = getCurrentUser();
                     </a>
                 </li>
                 <li class="menu-item">
+                    <a href="#transactions">
+                        <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z"/>
+                        </svg>
+                        Transaction History
+                    </a>
+                </li>
+                <li class="menu-item">
                     <a href="#reports">
                         <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
                             <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>
@@ -299,6 +307,106 @@ $currentUser = getCurrentUser();
                         <tbody>
                             <tr>
                                 <td colspan="5" style="text-align: center; padding: 20px; color: #666;">No vouchers found. Click "Create New Voucher" to get started.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Transaction History Section -->
+            <div class="content-section" id="transactions-content" style="display: none;">
+                <div class="page-header">
+                    <div class="header-content">
+                        <h1>Transaction History</h1>
+                        <p>Complete transaction history including advances, repayments, and voucher processing</p>
+                    </div>
+                    <div class="header-actions">
+                        <button class="filter-btn" onclick="showTransactionFilters()">🔍 Filter</button>
+                        <button class="export-btn" onclick="exportTransactionHistory()">📤 Export History</button>
+                        <button class="refresh-btn" onclick="refreshTransactionHistory()">🔄 Refresh</button>
+                    </div>
+                </div>
+
+                <div class="transaction-stats">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <svg width="24" height="24" fill="#28a745" viewBox="0 0 24 24">
+                                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                                </svg>
+                            </div>
+                            <div class="stat-content">
+                                <h3 id="total-transactions">0</h3>
+                                <p>Total Transactions</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <svg width="24" height="24" fill="#007bff" viewBox="0 0 24 24">
+                                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                                </svg>
+                            </div>
+                            <div class="stat-content">
+                                <h3 id="total-advances">₹0</h3>
+                                <p>Total Loan Payments</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <svg width="24" height="24" fill="#ffc107" viewBox="0 0 24 24">
+                                    <path d="M11 15h2v2h-2zm0-8h2v6h-2zm.99-5C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z"/>
+                                </svg>
+                            </div>
+                            <div class="stat-content">
+                                <h3 id="total-repayments">₹0</h3>
+                                <p>Total EMI Payments</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <svg width="24" height="24" fill="#dc3545" viewBox="0 0 24 24">
+                                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11H7v-2h10v2z"/>
+                                </svg>
+                            </div>
+                            <div class="stat-content">
+                                <h3 id="net-outstanding">₹0</h3>
+                                <p>Current Outstanding</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="transaction-filters" id="transactionFilters" style="display: none;">
+                    <div class="filter-row">
+                        <div class="filter-group">
+                            <label>Employee ID:</label>
+                            <input type="text" id="filterEmployee" placeholder="Enter Employee ID">
+                        </div>
+                        <div class="filter-actions">
+                            <button class="btn btn-primary" onclick="applyTransactionFilters()">Apply</button>
+                            <button class="btn btn-secondary" onclick="clearTransactionFilters()">Clear</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <table class="requests-table" id="transactionHistoryTable">
+                        <thead>
+                            <tr>
+                                <th onclick="sortTransactions('date')">Date <span class="sort-indicator"></span></th>
+                                <th onclick="sortTransactions('type')">Transaction Type <span class="sort-indicator"></span></th>
+                                <th onclick="sortTransactions('emp_id')">Employee ID <span class="sort-indicator"></span></th>
+                                <th onclick="sortTransactions('emp_name')">Employee Name <span class="sort-indicator"></span></th>
+                                <th onclick="sortTransactions('amount')">Amount <span class="sort-indicator"></span></th>
+                                <th onclick="sortTransactions('description')">Description <span class="sort-indicator"></span></th>
+                                <th onclick="sortTransactions('reference')">Reference <span class="sort-indicator"></span></th>
+                                <th onclick="sortTransactions('voucher_number')">Voucher Number <span class="sort-indicator"></span></th>
+                                <th onclick="sortTransactions('status')">Status <span class="sort-indicator"></span></th>
+                            </tr>
+                        </thead>
+                        <tbody id="transactionHistoryBody">
+                            <tr>
+                                <td colspan="9" style="text-align: center; padding: 20px; color: #666;">Loading transaction history...</td>
                             </tr>
                         </tbody>
                     </table>

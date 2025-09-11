@@ -116,6 +116,14 @@ try {
             getDashboardStats();
             break;
             
+        case 'get_transaction_history':
+            getTransactionHistory();
+            break;
+            
+        case 'export_transaction_history':
+            exportTransactionHistory();
+            break;
+            
         case 'add_employee':
             if ($method === 'POST') {
                 addEmployee();
@@ -420,6 +428,371 @@ function getDashboardStats() {
     } catch (Exception $e) {
         error_log("Dashboard stats error: " . $e->getMessage());
         sendJsonResponse(false, 'Error loading dashboard stats: ' . $e->getMessage());
+    }
+}
+
+/**
+ * Get comprehensive transaction history
+ */
+function getTransactionHistory() {
+    try {
+        $pdo = getDB();
+        
+        // Get filter parameters
+        $transactionType = $_GET['type'] ?? '';
+        $employeeId = $_GET['employee_id'] ?? '';
+        $dateFrom = $_GET['date_from'] ?? '';
+        $dateTo = $_GET['date_to'] ?? '';
+        $amountMin = $_GET['amount_min'] ?? '';
+        $amountMax = $_GET['amount_max'] ?? '';
+        $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 1000;
+        $offset = isset($_GET['offset']) ? (int)$_GET['offset'] : 0;
+        
+        $transactions = [];
+        
+        // Build base query conditions
+        $conditions = [];
+        $params = [];
+        
+        if ($employeeId) {
+            $conditions[] = "emp_id = ?";
+            $params[] = $employeeId;
+        }
+        
+        if ($dateFrom) {
+            $conditions[] = "transaction_date >= ?";
+            $params[] = convertDateToYYYYMMDD($dateFrom);
+        }
+        
+        if ($dateTo) {
+            $conditions[] = "transaction_date <= ?";
+            $params[] = convertDateToYYYYMMDD($dateTo);
+        }
+        
+        if ($amountMin) {
+            $conditions[] = "amount >= ?";
+            $params[] = (float)$amountMin;
+        }
+        
+        if ($amountMax) {
+            $conditions[] = "amount <= ?";
+            $params[] = (float)$amountMax;
+        }
+        
+        $whereClause = $conditions ? " WHERE " . implode(" AND ", $conditions) : "";
+        
+        // Get advance transactions (borrowers - money given out)
+        if (!$transactionType || $transactionType === 'advance') {
+            $sql = "SELECT 
+                        'advance' as transaction_type,
+                        emp_id,
+                        name as emp_name,
+                        amount,
+                        disbursed_date as transaction_date,
+                        application_no as reference,
+                        status,
+                        created_at,
+                        'Advance disbursed to employee' as description
+                    FROM advance_borrowers" . $whereClause . "
+                    ORDER BY disbursed_date ASC";
+            
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute($params);
+            $advances = $stmt->fetchAll();
+            
+            foreach ($advances as $advance) {
+                $transactions[] = [
+                    'date' => convertDateToDDMMYYYY($advance['transaction_date']),
+                    'type' => 'Loan Payment',
+                    'emp_id' => $advance['emp_id'],
+                    'emp_name' => $advance['emp_name'],
+                    'amount' => (float)$advance['amount'],
+                    'amount_formatted' => '₹' . number_format($advance['amount'], 2),
+                    'description' => $advance['description'],
+                    'reference' => $advance['reference'] ?: 'N/A',
+                    'voucher_number' => '', // Empty for advance transactions
+                    'status' => ucfirst($advance['status']),
+                    'created_at' => $advance['created_at'],
+                    'transaction_type' => 'advance',
+                    'direction' => 'outgoing' // Money going out
+                ];
+            }
+        }
+        
+        // Get repayment/voucher transactions (vouchers - money coming back)
+        if (!$transactionType || $transactionType === 'repayment') {
+            $sql = "SELECT 
+                        'repayment' as transaction_type,
+                        emp_id,
+                        emp_name,
+                        amount,
+                        voucher_date as transaction_date,
+                        COALESCE(application_no, id) as reference,
+                        id as voucher_id,
+                        status,
+                        created_at,
+                        CONCAT('Voucher payment - ', month) as description
+                    FROM advance_vouchers" . $whereClause . "
+                    ORDER BY voucher_date ASC";
+            
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute($params);
+            $vouchers = $stmt->fetchAll();
+            
+            foreach ($vouchers as $voucher) {
+                $transactions[] = [
+                    'date' => convertDateToDDMMYYYY($voucher['transaction_date']),
+                    'type' => 'EMI Payment',
+                    'emp_id' => $voucher['emp_id'],
+                    'emp_name' => $voucher['emp_name'],
+                    'amount' => (float)$voucher['amount'],
+                    'amount_formatted' => '₹' . number_format($voucher['amount'], 2),
+                    'description' => $voucher['description'],
+                    'reference' => $voucher['reference'] ?: 'N/A',
+                    'voucher_number' => 'V' . str_pad($voucher['voucher_id'], 6, '0', STR_PAD_LEFT), // Format: V000001
+                    'status' => ucfirst($voucher['status']),
+                    'created_at' => $voucher['created_at'],
+                    'transaction_type' => 'repayment',
+                    'direction' => 'incoming' // Money coming in
+                ];
+            }
+        }
+        
+        // Sort all transactions by date (oldest first)
+        usort($transactions, function($a, $b) {
+            $dateA = DateTime::createFromFormat('d-m-Y', $a['date']);
+            $dateB = DateTime::createFromFormat('d-m-Y', $b['date']);
+            
+            if ($dateA && $dateB) {
+                return $dateA <=> $dateB; // Oldest first
+            }
+            return 0;
+        });
+        
+        // Apply pagination
+        $totalTransactions = count($transactions);
+        $transactions = array_slice($transactions, $offset, $limit);
+        
+        // Calculate summary statistics based on filtered results
+        $totalAdvances = 0;
+        $totalRepayments = 0;
+        $currentOutstanding = 0;
+        
+        // Get filtered summary from database
+        // Calculate advance summary with filters
+        $advanceSql = "SELECT COALESCE(SUM(amount), 0) FROM advance_borrowers" . $whereClause;
+        $stmt = $pdo->prepare($advanceSql);
+        $stmt->execute($params);
+        $advanceSum = $stmt->fetchColumn();
+        
+        // Calculate repayment summary with filters - need to adjust WHERE clause for voucher date
+        $repaymentWhereClause = $whereClause;
+        if ($whereClause) {
+            // Replace transaction_date with voucher_date for vouchers table
+            $repaymentWhereClause = str_replace('transaction_date', 'voucher_date', $whereClause);
+        }
+        $repaymentSql = "SELECT COALESCE(SUM(amount), 0) FROM advance_vouchers" . $repaymentWhereClause;
+        $stmt = $pdo->prepare($repaymentSql);
+        $stmt->execute($params);
+        $repaymentSum = $stmt->fetchColumn();
+        
+        // Calculate filtered outstanding amount for advances within the date range
+        $outstandingWhereClause = $whereClause;
+        if ($outstandingWhereClause) {
+            // For outstanding calculation, we need to include both date filter and active status
+            // Replace transaction_date with disbursed_date for borrowers table
+            $outstandingWhereClause = str_replace('transaction_date', 'disbursed_date', $outstandingWhereClause);
+            $outstandingWhereClause .= " AND status = 'active'";
+        } else {
+            $outstandingWhereClause = " WHERE status = 'active'";
+        }
+        $outstandingSql = "SELECT COALESCE(SUM(outstanding_amount), 0) FROM advance_borrowers" . $outstandingWhereClause;
+        $stmt = $pdo->prepare($outstandingSql);
+        $stmt->execute($params);
+        $outstandingSum = $stmt->fetchColumn();
+        
+        $result = [
+            'transactions' => $transactions,
+            'pagination' => [
+                'total' => $totalTransactions,
+                'limit' => $limit,
+                'offset' => $offset,
+                'hasMore' => ($offset + $limit) < $totalTransactions
+            ],
+            'summary' => [
+                'totalTransactions' => $totalTransactions,
+                'totalAdvances' => (float)$advanceSum,
+                'totalRepayments' => (float)$repaymentSum,
+                'currentOutstanding' => (float)$outstandingSum,
+                'netFlow' => (float)$repaymentSum - (float)$advanceSum
+            ]
+        ];
+        
+        sendJsonResponse(true, 'Transaction history loaded successfully', $result);
+        
+    } catch (Exception $e) {
+        error_log("Get transaction history error: " . $e->getMessage());
+        sendJsonResponse(false, 'Error loading transaction history: ' . $e->getMessage());
+    }
+}
+
+/**
+ * Export transaction history to Excel
+ */
+function exportTransactionHistory() {
+    try {
+        $pdo = getDB();
+        
+        // Get filter parameters (same as getTransactionHistory)
+        $transactionType = $_GET['type'] ?? '';
+        $employeeId = $_GET['employee_id'] ?? '';
+        $dateFrom = $_GET['date_from'] ?? '';
+        $dateTo = $_GET['date_to'] ?? '';
+        $amountMin = $_GET['amount_min'] ?? '';
+        $amountMax = $_GET['amount_max'] ?? '';
+        
+        $transactions = [];
+        
+        // Build base query conditions
+        $conditions = [];
+        $params = [];
+        
+        if ($employeeId) {
+            $conditions[] = "emp_id = ?";
+            $params[] = $employeeId;
+        }
+        
+        if ($dateFrom) {
+            $conditions[] = "transaction_date >= ?";
+            $params[] = convertDateToYYYYMMDD($dateFrom);
+        }
+        
+        if ($dateTo) {
+            $conditions[] = "transaction_date <= ?";
+            $params[] = convertDateToYYYYMMDD($dateTo);
+        }
+        
+        if ($amountMin) {
+            $conditions[] = "amount >= ?";
+            $params[] = (float)$amountMin;
+        }
+        
+        if ($amountMax) {
+            $conditions[] = "amount <= ?";
+            $params[] = (float)$amountMax;
+        }
+        
+        $whereClause = $conditions ? " WHERE " . implode(" AND ", $conditions) : "";
+        
+        // Get advance transactions
+        if (!$transactionType || $transactionType === 'advance') {
+            $sql = "SELECT 
+                        'Advance Given' as transaction_type,
+                        emp_id,
+                        name as emp_name,
+                        amount,
+                        disbursed_date as transaction_date,
+                        application_no as reference,
+                        status,
+                        created_at,
+                        'Advance disbursed to employee' as description
+                    FROM advance_borrowers" . $whereClause . "
+                    ORDER BY disbursed_date DESC";
+            
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute($params);
+            $advances = $stmt->fetchAll();
+            
+            foreach ($advances as $advance) {
+                $transactions[] = [
+                    'Date' => convertDateToDDMMYYYY($advance['transaction_date']),
+                    'Transaction Type' => $advance['transaction_type'],
+                    'Employee ID' => $advance['emp_id'],
+                    'Employee Name' => $advance['emp_name'],
+                    'Amount' => (float)$advance['amount'],
+                    'Description' => $advance['description'],
+                    'Reference' => $advance['reference'] ?: 'N/A',
+                    'Status' => ucfirst($advance['status']),
+                    'Created At' => $advance['created_at']
+                ];
+            }
+        }
+        
+        // Get repayment/voucher transactions
+        if (!$transactionType || $transactionType === 'repayment') {
+            $sql = "SELECT 
+                        'Repayment/Voucher' as transaction_type,
+                        emp_id,
+                        emp_name,
+                        amount,
+                        voucher_date as transaction_date,
+                        COALESCE(application_no, id) as reference,
+                        status,
+                        created_at,
+                        CONCAT('Voucher payment - ', month) as description
+                    FROM advance_vouchers" . $whereClause . "
+                    ORDER BY voucher_date DESC";
+            
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute($params);
+            $vouchers = $stmt->fetchAll();
+            
+            foreach ($vouchers as $voucher) {
+                $transactions[] = [
+                    'Date' => convertDateToDDMMYYYY($voucher['transaction_date']),
+                    'Transaction Type' => $voucher['transaction_type'],
+                    'Employee ID' => $voucher['emp_id'],
+                    'Employee Name' => $voucher['emp_name'],
+                    'Amount' => (float)$voucher['amount'],
+                    'Description' => $voucher['description'],
+                    'Reference' => $voucher['reference'] ?: 'N/A',
+                    'Status' => ucfirst($voucher['status']),
+                    'Created At' => $voucher['created_at']
+                ];
+            }
+        }
+        
+        // Sort by date (newest first)
+        usort($transactions, function($a, $b) {
+            $dateA = DateTime::createFromFormat('d-m-Y', $a['Date']);
+            $dateB = DateTime::createFromFormat('d-m-Y', $b['Date']);
+            
+            if ($dateA && $dateB) {
+                return $dateB <=> $dateA;
+            }
+            return 0;
+        });
+        
+        // Set headers for Excel download
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment; filename="Transaction_History_' . date('Y-m-d') . '.xlsx"');
+        header('Cache-Control: max-age=0');
+        
+        // Create Excel content
+        $excel_content = "Date\tTransaction Type\tEmployee ID\tEmployee Name\tAmount\tDescription\tReference\tStatus\tCreated At\n";
+        
+        foreach ($transactions as $transaction) {
+            $excel_content .= implode("\t", [
+                $transaction['Date'],
+                $transaction['Transaction Type'],
+                $transaction['Employee ID'],
+                $transaction['Employee Name'],
+                number_format($transaction['Amount'], 2),
+                $transaction['Description'],
+                $transaction['Reference'],
+                $transaction['Status'],
+                $transaction['Created At']
+            ]) . "\n";
+        }
+        
+        // Output the content
+        echo $excel_content;
+        exit;
+        
+    } catch (Exception $e) {
+        error_log("Export transaction history error: " . $e->getMessage());
+        header('Content-Type: application/json');
+        sendJsonResponse(false, 'Error exporting transaction history: ' . $e->getMessage());
     }
 }
 

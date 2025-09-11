@@ -426,6 +426,23 @@ body {
     font-weight: bold !important;
 }
 
+/* Show Date column in transactions section */
+#transactions-content .requests-table th:nth-child(1),
+#transactions-content .requests-table td:nth-child(1) {
+    display: table-cell !important;
+    font-weight: bold;
+    color: #333;
+    background-color: #f8f9fa;
+    min-width: 120px;
+}
+
+/* Highlight Date header in transactions */
+#transactions-content .requests-table th:nth-child(1) {
+    background-color: #e8f5e8 !important;
+    color: #2e7d32 !important;
+    font-weight: bold !important;
+}
+
 /* Show Employee ID column in vouchers section */
 #vouchers-content .requests-table th:nth-child(1),
 #vouchers-content .requests-table td:nth-child(1) {
@@ -2757,4 +2774,424 @@ body.dark-mode .info-item {
     background: #2c3e50;
     border-color: #495057;
     color: #ecf0f1;
+}
+
+/* Transaction History Styles */
+.transaction-stats {
+    margin-bottom: 2rem;
+}
+
+.transaction-filters {
+    background: #fff;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e9ecef;
+}
+
+.filter-row {
+    display: flex;
+    align-items: end;
+    gap: 2rem;
+    flex-wrap: wrap;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.filter-group label {
+    font-weight: 500;
+    color: #555;
+    font-size: 0.9rem;
+}
+
+.filter-group select,
+.filter-group input {
+    padding: 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+
+.filter-group select:focus,
+.filter-group input:focus {
+    outline: none;
+    border-color: #6d87ea;
+    box-shadow: 0 0 0 2px rgba(109, 135, 234, 0.2);
+}
+
+.filter-group input[placeholder] {
+    color: #999;
+}
+
+.filter-group input[placeholder]:focus {
+    color: #333;
+}
+
+.amount-range {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.amount-range input {
+    flex: 1;
+}
+
+.filter-actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: end;
+}
+
+.filter-actions .btn {
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.filter-actions .btn-primary {
+    background: #6d87ea;
+    color: white;
+}
+
+.filter-actions .btn-primary:hover {
+    background: #5a75d6;
+}
+
+.filter-actions .btn-secondary {
+    background: #6c757d;
+    color: white;
+}
+
+.filter-actions .btn-secondary:hover {
+    background: #5a6268;
+}
+
+/* Transaction Table Styles */
+#transactionHistoryTable th {
+    cursor: pointer;
+    user-select: none;
+    position: relative;
+    transition: background-color 0.2s ease;
+}
+
+#transactionHistoryTable th:hover {
+    background-color: #f8f9fa;
+}
+
+.sort-indicator {
+    margin-left: 0.5rem;
+    opacity: 0.5;
+    font-size: 0.8rem;
+}
+
+.sort-indicator:after {
+    content: '↕';
+}
+
+.sort-indicator.asc:after {
+    content: '↑';
+    opacity: 1;
+}
+
+.sort-indicator.desc:after {
+    content: '↓';
+    opacity: 1;
+}
+
+/* Transaction Type Styles */
+.transaction-type {
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.transaction-outgoing .transaction-type {
+    background: #ffe6e6;
+    color: #d63384;
+    border: 1px solid #f5c6cb;
+}
+
+.transaction-incoming .transaction-type {
+    background: #e6f7ff;
+    color: #0066cc;
+    border: 1px solid #b8daff;
+}
+
+/* Amount Display Styles */
+.amount-display {
+    font-weight: 600;
+    font-family: 'Courier New', monospace;
+}
+
+.transaction-outgoing .amount-display {
+    color: #d63384;
+}
+
+.transaction-incoming .amount-display {
+    color: #28a745;
+}
+
+/* Transaction Row Styles */
+.transaction-outgoing {
+    background: rgba(255, 230, 230, 0.3);
+}
+
+.transaction-incoming {
+    background: rgba(230, 247, 255, 0.3);
+}
+
+.transaction-outgoing:hover {
+    background: rgba(255, 230, 230, 0.5);
+}
+
+.transaction-incoming:hover {
+    background: rgba(230, 247, 255, 0.5);
+}
+
+/* Status Badge Styles */
+.status-badge {
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.status-badge.status-active {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.status-badge.status-completed {
+    background: #cce7ff;
+    color: #004085;
+    border: 1px solid #b3d7ff;
+}
+
+.status-badge.status-pending {
+    background: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeaa7;
+}
+
+.status-badge.status-cancelled {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+/* Transaction Details Modal */
+.transaction-details {
+    padding: 1rem;
+}
+
+.transaction-details h3 {
+    margin-bottom: 1rem;
+    color: #333;
+    border-bottom: 2px solid #6d87ea;
+    padding-bottom: 0.5rem;
+}
+
+.transaction-details .detail-row {
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.transaction-details .detail-row:last-child {
+    border-bottom: none;
+}
+
+.transaction-details .detail-row strong {
+    color: #555;
+    font-weight: 600;
+}
+
+/* Action Buttons */
+.refresh-btn, .filter-btn {
+    background: #17a2b8;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.refresh-btn:hover, .filter-btn:hover {
+    background: #138496;
+    transform: translateY(-1px);
+}
+
+/* Mobile Responsiveness for Transaction History */
+@media (max-width: 768px) {
+    .transaction-stats .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+    }
+    
+    .filter-row {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 1rem;
+    }
+    
+    .filter-group {
+        width: 100%;
+    }
+    
+    .filter-actions {
+        justify-content: stretch;
+        margin-top: 1rem;
+        width: 100%;
+    }
+    
+    .filter-actions .btn {
+        flex: 1;
+    }
+    
+    #transactionHistoryTable {
+        font-size: 0.85rem;
+    }
+    
+    #transactionHistoryTable th,
+    #transactionHistoryTable td {
+        padding: 0.5rem 0.25rem;
+    }
+    
+    .transaction-type {
+        font-size: 0.75rem;
+        padding: 0.2rem 0.4rem;
+    }
+    
+    .amount-display {
+        font-size: 0.85rem;
+    }
+    
+    .status-badge {
+        font-size: 0.7rem;
+        padding: 0.2rem 0.4rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .transaction-stats .stats-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .page-header .header-actions {
+        flex-direction: column;
+        gap: 0.5rem;
+        width: 100%;
+    }
+    
+    .page-header .header-actions button {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    /* Stack table columns on very small screens */
+    #transactionHistoryTable thead {
+        display: none;
+    }
+    
+    #transactionHistoryTable,
+    #transactionHistoryTable tbody,
+    #transactionHistoryTable tr,
+    #transactionHistoryTable td {
+        display: block;
+        width: 100%;
+    }
+    
+    #transactionHistoryTable tr {
+        border: 1px solid #ccc;
+        margin-bottom: 1rem;
+        border-radius: 8px;
+        background: white;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    
+    #transactionHistoryTable td {
+        border: none;
+        border-bottom: 1px solid #eee;
+        position: relative;
+        padding-left: 50%;
+        text-align: right;
+    }
+    
+    #transactionHistoryTable td:before {
+        content: attr(data-label);
+        position: absolute;
+        left: 6px;
+        width: 45%;
+        padding-right: 10px;
+        white-space: nowrap;
+        font-weight: bold;
+        color: #333;
+        text-align: left;
+    }
+    
+    #transactionHistoryTable td:last-child {
+        border-bottom: none;
+    }
+}
+
+/* Voucher Number Column Styling */
+.voucher-number {
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    color: #007bff;
+    background-color: #f8f9fa;
+    padding: 0.5rem 0.8rem;
+    border-radius: 4px;
+    text-align: center;
+    min-width: 120px;
+    border: 1px solid #e9ecef;
+}
+
+.voucher-number:empty {
+    background-color: transparent;
+    border: none;
+    padding: 0.5rem 0.8rem;
+}
+
+.voucher-number:not(:empty):hover {
+    background-color: #e3f2fd;
+    color: #0056b3;
+}
+
+/* Responsive styling for voucher numbers */
+@media (max-width: 768px) {
+    .voucher-number {
+        min-width: 100px;
+        font-size: 0.8rem;
+        padding: 0.4rem 0.6rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .voucher-number {
+        min-width: 80px;
+        font-size: 0.75rem;
+        padding: 0.3rem 0.5rem;
+    }
 }
