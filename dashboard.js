@@ -20,8 +20,15 @@ const failedData = {
 
 let currentDeleteId = null;
 let currentDeleteType = null;
+let currentDeleteEmpId = null;
 let currentImportType = null;
 let importPreviewData = null;
+
+// Reusable Table Action Button Icons
+const ICON_EYE = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>`;
+const ICON_EDIT = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>`;
+const ICON_DELETE = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>`;
+const ICON_DOWNLOAD = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>`;
 
 // ========================================
 // Utility Functions
@@ -476,13 +483,13 @@ function renderEmployeeTable() {
         
         html += `
             <tr>
-                <td style="font-weight: bold; background-color: #f8f9fa; color: #2196f3;">${employee.id}</td>
+                <td class="emp-id-cell">${employee.id}</td>
                 <td>${employee.name}</td>
                 <td>${entryDate}</td>
                 <td>
-                    <button class="view-btn" onclick="viewRecord('employee', '${employee.id}')">View</button>
-                    <button class="edit-btn" onclick="editRecord('employee', '${employee.id}')">Edit</button>
-                    <button class="delete-btn" onclick="deleteRecord('employee', '${employee.id}')">Delete</button>
+                    <button class="view-btn action-btn-icon" onclick="viewRecord('employee', '${employee.id}')" title="View">${ICON_EYE}</button>
+                    <button class="edit-btn action-btn-icon" onclick="editRecord('employee', '${employee.id}')" title="Edit">${ICON_EDIT}</button>
+                    <button class="delete-btn action-btn-icon" onclick="deleteRecord('employee', '${employee.id}')" title="Delete">${ICON_DELETE}</button>
                 </td>
             </tr>
         `;
@@ -501,7 +508,7 @@ function renderBorrowerTable() {
     if (!tbody) return;
     
     if (Object.keys(borrowers).length === 0) {
-        tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; padding: 20px; color: #666;">No borrowers found. Click "Add New Borrower" to get started.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 20px; color: #666;">No borrowers found. Click "Add New Borrower" to get started.</td></tr>';
         return;
     }
     
@@ -530,20 +537,18 @@ function renderBorrowerTable() {
         
         html += `
             <tr class="${rowClass}">
-                <td>${borrower.applicationNo || 'N/A'}</td>
-                <td style="font-weight: bold; background-color: #f8f9fa; color: #2196f3;">${borrower.empId}</td>
+                <td class="emp-id-cell">${borrower.empId}</td>
                 <td>${borrower.name}</td>
                 <td>₹${(borrower.amount || 0).toLocaleString()}</td>
                 <td>₹${(borrower.outstandingAmount || borrower.amount || 0).toLocaleString()}</td>
                 <td>₹${(borrower.emi || 0).toLocaleString()}</td>
                 <td>${borrower.month || 'N/A'}</td>
                 <td>${convertDateFormat(borrower.disbursedDate)}</td>
-                <td>${entryDate}</td>
                 <td><span class="status ${statusClass}">${statusText}</span></td>
                 <td>
-                    <button class="view-btn" onclick="viewRecord('borrower', '${borrower.empId}')">View History</button>
-                    <button class="edit-btn ${editDisabled}" onclick="editRecord('borrower', '${borrower.id}')" ${editDisabled ? 'disabled title="Cannot edit completed records"' : ''}>Edit</button>
-                    <button class="delete-btn ${deleteDisabled}" onclick="deleteRecord('borrower', '${borrower.id}')" ${deleteDisabled ? 'disabled title="Cannot delete completed records"' : ''}>Delete</button>
+                    <button class="view-btn action-btn-icon" onclick="viewRecord('borrower', '${borrower.empId}')" title="View History">${ICON_EYE}</button>
+                    <button class="edit-btn action-btn-icon ${editDisabled}" onclick="editRecord('borrower', '${borrower.id}')" ${editDisabled ? 'disabled title="Cannot edit completed records"' : 'title="Edit"'}>${ICON_EDIT}</button>
+                    <button class="delete-btn action-btn-icon ${deleteDisabled}" onclick="deleteRecord('borrower', '${borrower.id}')" ${deleteDisabled ? 'disabled title="Cannot delete completed records"' : 'title="Delete"'}>${ICON_DELETE}</button>
                 </td>
             </tr>
         `;
@@ -586,12 +591,12 @@ function renderVoucherTable() {
     Object.values(employeeGroups).forEach(employee => {
         html += `
             <tr>
-                <td style="font-weight: bold; background-color: #f8f9fa; color: #2196f3;">${employee.empId}</td>
+                <td class="emp-id-cell">${employee.empId}</td>
                 <td>${employee.empName}</td>
                 <td><span class="voucher-count">${employee.vouchers.length}</span></td>
                 <td><span class="amount-total">₹${(employee.totalAmount || 0).toLocaleString()}</span></td>
                 <td>
-                    <button class="view-btn" onclick="viewEmployeeVouchers('${employee.empId}')">View Vouchers</button>
+                    <button class="view-btn action-btn-icon" onclick="viewEmployeeVouchers('${employee.empId}')" title="View Vouchers">${ICON_EYE}</button>
                 </td>
             </tr>
         `;
@@ -615,6 +620,7 @@ function viewEmployeeVouchers(empId) {
     
     if (employeeVouchers.length === 0) {
         alert('No vouchers found for this employee');
+        closeModal('viewModal');
         return;
     }
     
@@ -622,16 +628,17 @@ function viewEmployeeVouchers(empId) {
     let totalAmount = 0; // Initialize totalAmount at the top
     
     let vouchersList = `
-        <div class="table-container" style="overflow-x: auto; border: 1px solid #ddd; border-radius: 8px;">
-            <table class="vouchers-table" style="width: 100%; border-collapse: collapse; background: white;">
+        <div class="table-container">
+            <table class="requests-table vouchers-table">
                 <thead>
-                    <tr style="background: #f8f9fa; border-bottom: 2px solid #dee2e6;">
-                        <th style="padding: 12px; text-align: left; font-weight: 600; border-right: 1px solid #dee2e6;">#</th>
-                        <th style="padding: 12px; text-align: left; font-weight: 600; border-right: 1px solid #dee2e6;">Voucher No</th>
-                        <th style="padding: 12px; text-align: left; font-weight: 600; border-right: 1px solid #dee2e6;">Application No</th>
-                        <th style="padding: 12px; text-align: left; font-weight: 600; border-right: 1px solid #dee2e6;">Date</th>
-                        <th style="padding: 12px; text-align: left; font-weight: 600; border-right: 1px solid #dee2e6;">Month</th>
-                        <th style="padding: 12px; text-align: left; font-weight: 600; color: #28a745;">Amount</th>
+                    <tr>
+                        <th style="width: 50px;">#</th>
+                        <th>Voucher No</th>
+                        <th>Application No</th>
+                        <th>Date</th>
+                        <th>Month</th>
+                        <th style="text-align: right;">Amount</th>
+                        <th style="text-align: center;">Action</th>
                     </tr>
                 </thead>
                 <tbody>`;
@@ -639,22 +646,26 @@ function viewEmployeeVouchers(empId) {
     employeeVouchers.forEach((voucher, index) => {
         totalAmount += parseFloat(voucher.amount);
         vouchersList += `
-                    <tr style="border-bottom: 1px solid #dee2e6; ${index % 2 === 0 ? 'background: #f8f9fa;' : 'background: white;'}">
-                        <td style="padding: 10px 12px; border-right: 1px solid #dee2e6; font-weight: 500;">${index + 1}</td>
-                        <td style="padding: 10px 12px; border-right: 1px solid #dee2e6; font-family: monospace; color: #007bff; font-weight: bold;">${voucher.id}</td>
-                        <td style="padding: 10px 12px; border-right: 1px solid #dee2e6; font-family: monospace; color: #6f42c1; font-weight: 500;">${voucher.applicationNo || 'N/A'}</td>
-                        <td style="padding: 10px 12px; border-right: 1px solid #dee2e6; font-weight: 500;">${convertDateFormat(voucher.date)}</td>
-                        <td style="padding: 10px 12px; border-right: 1px solid #dee2e6;">${voucher.month}</td>
-                        <td style="padding: 10px 12px; color: #28a745; font-weight: bold; text-align: right;">₹${parseFloat(voucher.amount).toLocaleString()}</td>
+                    <tr>
+                        <td style="color: #64748b;">${index + 1}</td>
+                        <td style="font-weight: 600; color: #2563eb;">${voucher.id}</td>
+                        <td style="color: #475569;">${voucher.applicationNo || 'N/A'}</td>
+                        <td>${convertDateFormat(voucher.date)}</td>
+                        <td>${voucher.month}</td>
+                        <td style="color: #059669; font-weight: 600; text-align: right;">₹${parseFloat(voucher.amount).toLocaleString()}</td>
+                        <td style="text-align: center;">
+                            <button class="delete-btn action-btn-icon" onclick="deleteRecord('voucher', '${voucher.auto_id || voucher.id}', '${employee.empId}')" title="Delete Voucher">${ICON_DELETE}</button>
+                        </td>
                     </tr>`;
     });
     
     vouchersList += `
                 </tbody>
                 <tfoot>
-                    <tr style="background: #e3f2fd; border-top: 2px solid #2196f3;">
-                        <td colspan="5" style="padding: 12px; font-weight: bold; text-align: right; border-right: 1px solid #dee2e6;">Total Amount:</td>
-                        <td style="padding: 12px; color: #1976d2; font-weight: bold; font-size: 1.1em; text-align: right;">₹${totalAmount.toLocaleString()}</td>
+                    <tr style="background: #f8fafc; font-weight: 600; border-top: 2px solid #e2e8f0;">
+                        <td colspan="5" style="text-align: right; padding: 12px 16px;">Total Amount:</td>
+                        <td style="color: #059669; font-weight: 700; font-size: 1rem; text-align: right; padding: 12px 16px;">₹${totalAmount.toLocaleString()}</td>
+                        <td></td>
                     </tr>
                 </tfoot>
             </table>
@@ -662,33 +673,41 @@ function viewEmployeeVouchers(empId) {
     
     const content = `
         <div class="employee-vouchers-details">
-            <div class="employee-header" style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
-                <h3 style="margin: 0 0 10px 0; color: #333;">Employee Vouchers</h3>
-                <div class="detail-row"><strong>Employee ID:</strong> ${employee.empId}</div>
-                <div class="detail-row"><strong>Employee Name:</strong> ${employee.empName}</div>
-                <div class="detail-row"><strong>Total Vouchers:</strong> ${employeeVouchers.length}</div>
-                <div class="detail-row"><strong>Total Amount:</strong> <span style="color: #28a745; font-weight: bold;">₹${(totalAmount || 0).toLocaleString()}</span></div>
+            <div class="modal-info-bar">
+                <div class="modal-info-item">
+                    <span class="modal-info-label">Employee ID</span>
+                    <span class="modal-info-value">${employee.empId}</span>
+                </div>
+                <div class="modal-info-item">
+                    <span class="modal-info-label">Employee Name</span>
+                    <span class="modal-info-value">${employee.empName}</span>
+                </div>
+                <div class="modal-info-item">
+                    <span class="modal-info-label">Total Vouchers</span>
+                    <span class="modal-info-value">${employeeVouchers.length}</span>
+                </div>
+                <div class="modal-info-item">
+                    <span class="modal-info-label">Total Amount</span>
+                    <span class="modal-info-value" style="color: #059669;">₹${(totalAmount || 0).toLocaleString()}</span>
+                </div>
             </div>
             
             <div class="vouchers-list">
-                <h4 style="margin-bottom: 15px; color: #333;">All Vouchers:</h4>
                 ${vouchersList}
-            </div>
-            
-            <div style="margin-top: 20px; text-align: center;">
-                <button class="btn btn-secondary" onclick="closeModal('viewModal')">Close</button>
             </div>
         </div>
     `;
 
     const viewModalBody = document.getElementById('viewModalBody');
-    console.log('viewModalBody element found:', viewModalBody);
-    
     if (viewModalBody) {
         viewModalBody.innerHTML = content;
-        console.log('About to open modal: viewModal');
+        const titleEl = document.querySelector('#viewModal .modal-header h2');
+        if (titleEl) {
+            titleEl.textContent = 'Employee Vouchers';
+        }
+        const modalContent = document.querySelector('#viewModal .modal-content');
+        if (modalContent) modalContent.classList.add('modal-wide');
         openModal('viewModal');
-        console.log('openModal called');
     } else {
         console.error('viewModalBody element not found!');
         alert('Modal element not found. Please refresh the page.');
@@ -914,18 +933,58 @@ function viewTransactionDetails(type, reference, empId) {
 /**
  * Export transaction history to Excel
  */
-function exportTransactionHistory() {
+async function exportTransactionHistory() {
     try {
         const filters = getTransactionFilters();
+        filters.limit = 10000;
+        filters.offset = 0;
         const queryParams = new URLSearchParams(filters);
         
-        // Open export URL in new window
-        window.open(`api.php?action=export_transaction_history&${queryParams}`, '_blank');
+        showNotification('Generating transaction history export...', 'info');
         
-        showNotification('Transaction history export started', 'success');
+        const response = await fetch(`api.php?action=get_transaction_history&${queryParams}`, {
+            credentials: 'same-origin'
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        
+        if (result.success && result.data && result.data.transactions) {
+            const transactions = result.data.transactions;
+            
+            if (transactions.length === 0) {
+                showNotification('No transactions found to export', 'warning');
+                return;
+            }
+            
+            const exportData = transactions.map((t, index) => ({
+                'No': index + 1,
+                'Date': convertDateFormat(t.date || t.transaction_date),
+                'Transaction Type': t.type || (t.transaction_type === 'advance' ? 'Loan Payment' : 'EMI Payment'),
+                'Employee ID': t.emp_id || t.empId,
+                'Employee Name': t.emp_name || t.empName,
+                'Amount (₹)': parseFloat(t.amount || 0),
+                'Description': t.description || '',
+                'Voucher / Reference': t.voucher_number || t.reference || 'N/A',
+                'Status': t.status ? t.status.charAt(0).toUpperCase() + t.status.slice(1) : '',
+                'Created At': t.created_at || ''
+            }));
+            
+            const worksheet = XLSX.utils.json_to_sheet(exportData);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, 'Transaction History');
+            
+            const filename = `Transaction_History_${new Date().toISOString().split('T')[0]}.xlsx`;
+            downloadExcel(workbook, filename);
+        } else {
+            showNotification(result.message || 'Error exporting transaction history', 'error');
+        }
     } catch (error) {
         console.error('Error exporting transaction history:', error);
-        showNotification('Error exporting transaction history', 'error');
+        showNotification('Error exporting transaction history: ' + error.message, 'error');
     }
 }
 
@@ -1011,7 +1070,7 @@ function updateDashboardTable() {
                 <td>${activity.amount}</td>
                 <td>${activity.type}</td>
                 <td>
-                    <button class="view-btn" onclick="viewActivityDetails('${activity.type}', '${activity.id}', '${activity.empId}')">View</button>
+                    <button class="view-btn action-btn-icon" onclick="viewActivityDetails('${activity.type}', '${activity.id}', '${activity.empId}')" title="View Details">${ICON_EYE}</button>
                 </td>
             </tr>
         `;
@@ -1103,12 +1162,8 @@ function updateReportsTable() {
                 <td>${report.lastGenerated}</td>
                 <td><span class="status ${statusClass}">${statusText}</span></td>
                 <td>
-                    <button class="view-btn" onclick="previewReport('${report.action}')" ${report.count === 0 ? 'disabled' : ''}>
-                        📋 Preview
-                    </button>
-                    <button class="export-btn" onclick="generateReport('${report.action}')" ${report.count === 0 ? 'disabled' : ''}>
-                        📤 Export
-                    </button>
+                    <button class="view-btn action-btn-icon" onclick="previewReport('${report.action}')" ${report.count === 0 ? 'disabled' : ''} title="Preview Report">${ICON_EYE}</button>
+                    <button class="export-btn action-btn-icon" onclick="generateReport('${report.action}')" ${report.count === 0 ? 'disabled' : ''} title="Export Report">${ICON_DOWNLOAD}</button>
                 </td>
             </tr>
         `;
@@ -1953,8 +2008,8 @@ function generateFailedDataSection(type, failedItems) {
                 <td class="failure-reason">${item.reason}</td>
                 <td class="data-preview" title="${item.originalData}">${dataPreview}...</td>
                 <td>
-                    <button class="view-btn" onclick="viewFailedDataDetails('${item.id}', '${type}')">Details</button>
-                    <button class="delete-btn" onclick="removeFailedData('${item.id}', '${type}')">Remove</button>
+                    <button class="view-btn action-btn-icon" onclick="viewFailedDataDetails('${item.id}', '${type}')" title="View Details">${ICON_EYE}</button>
+                    <button class="delete-btn action-btn-icon" onclick="removeFailedData('${item.id}', '${type}')" title="Remove">${ICON_DELETE}</button>
                 </td>
             </tr>
         `;
@@ -2089,34 +2144,22 @@ function formatDate(dateString) {
  * @param {string} modalId - The ID of the modal to open
  */
 function openModal(modalId) {
-    console.log('Opening modal:', modalId, 'with fullscreen support'); // Debug log
+    console.log('Opening modal:', modalId);
     const modal = document.getElementById(modalId);
     if (modal) {
-        // Add fullscreen class for view modal
-        if (modalId === 'viewModal') {
-            modal.classList.add('fullscreen');
-            console.log('Added fullscreen class to viewModal'); // Debug log
-        }
-        
         // Force display with important properties
         modal.style.display = 'block';
         modal.style.visibility = 'visible';
         modal.style.opacity = '1';
-        modal.style.zIndex = '9999';
+        modal.style.zIndex = modalId === 'deleteModal' ? '10005' : '9999';
         
         document.body.style.overflow = 'hidden';
-        
-        // Log modal state
-        console.log('Modal opened - display:', modal.style.display);
-        console.log('Modal opened - visibility:', modal.style.visibility);
-        console.log('Modal opened - classes:', modal.className);
         
         // Ensure modal content is properly displayed
         const modalContent = modal.querySelector('.modal-content');
         if (modalContent) {
             modalContent.style.display = 'flex';
             modalContent.style.flexDirection = 'column';
-            console.log('Modal content styled');
         }
     } else {
         console.error('Modal not found:', modalId);
@@ -2130,10 +2173,19 @@ function openModal(modalId) {
 function closeModal(modalId) {
     const modal = document.getElementById(modalId);
     if (modal) {
-        // Remove fullscreen class when closing
-        modal.classList.remove('fullscreen');
         modal.style.display = 'none';
-        document.body.style.overflow = 'auto';
+        
+        // Remove modal-wide class if present
+        const modalContent = modal.querySelector('.modal-content');
+        if (modalContent) {
+            modalContent.classList.remove('modal-wide');
+        }
+        
+        // Only restore body overflow if no other modal is currently visible
+        const anyModalOpen = Array.from(document.querySelectorAll('.modal')).some(m => m.style.display === 'block' && m.id !== modalId);
+        if (!anyModalOpen) {
+            document.body.style.overflow = 'auto';
+        }
     }
 }
 
@@ -2223,17 +2275,26 @@ async function viewBorrowerHistory(empId) {
             const historyData = result.data;
             
             // Create history modal content
+            const empStatus = (historyData.employee.status || 'active').toLowerCase();
+            const empStatusClass = empStatus === 'active' ? 'status-active' : 'status-cancelled';
             let content = `
                 <div class="borrower-history">
-                    <div class="employee-info">
-                        <h3>Employee Information</h3>
-                        <div class="detail-row"><strong>Employee ID:</strong> ${historyData.employee.id}</div>
-                        <div class="detail-row"><strong>Name:</strong> ${historyData.employee.name}</div>
-                        <div class="detail-row"><strong>Status:</strong> ${historyData.employee.status}</div>
+                    <div class="modal-info-bar">
+                        <div class="modal-info-item">
+                            <span class="modal-info-label">Employee ID</span>
+                            <span class="modal-info-value">${historyData.employee.id}</span>
+                        </div>
+                        <div class="modal-info-item">
+                            <span class="modal-info-label">Employee Name</span>
+                            <span class="modal-info-value">${historyData.employee.name}</span>
+                        </div>
+                        <div class="modal-info-item">
+                            <span class="modal-info-label">Status</span>
+                            <span class="status-badge ${empStatusClass}">${historyData.employee.status}</span>
+                        </div>
                     </div>
                     
                     <div class="borrowing-summary">
-                        <h3>Borrowing Summary</h3>
                         <div class="summary-cards">
                             <div class="summary-card">
                                 <div class="summary-value">${historyData.summary.totalBorrowings}</div>
@@ -2248,14 +2309,14 @@ async function viewBorrowerHistory(empId) {
                                 <div class="summary-label">Completed</div>
                             </div>
                             <div class="summary-card">
-                                <div class="summary-value">₹${(historyData.summary.totalOutstanding || 0).toLocaleString()}</div>
+                                <div class="summary-value text-success">₹${parseFloat(historyData.summary.totalOutstanding || 0).toLocaleString()}</div>
                                 <div class="summary-label">Outstanding</div>
                             </div>
                         </div>
                     </div>
                     
-                    <div class="borrowing-history">
-                        <h3>Borrowing History</h3>
+                    <div class="borrowing-history-section">
+                        <h3 class="history-section-title">Borrowing History</h3>
                         <div class="history-table-container">
                             <table class="history-table">
                                 <thead>
@@ -2274,7 +2335,7 @@ async function viewBorrowerHistory(empId) {
             `;
             
             if (historyData.history.length === 0) {
-                content += '<tr><td colspan="8" style="text-align: center; padding: 20px;">No borrowing history found</td></tr>';
+                content += '<tr><td colspan="8" style="text-align: center; padding: 20px; color: #64748b;">No borrowing history found</td></tr>';
             } else {
                 historyData.history.forEach(record => {
                     const statusClass = record.status === 'active' ? 'status-active' : 
@@ -2288,14 +2349,14 @@ async function viewBorrowerHistory(empId) {
                     
                     content += `
                         <tr>
-                            <td>${record.applicationNo || 'N/A'}</td>
-                            <td>₹${(record.amount || 0).toLocaleString()}</td>
-                            <td>₹${(record.outstandingAmount || 0).toLocaleString()}</td>
-                            <td>₹${(record.emi || 0).toLocaleString()}</td>
+                            <td style="font-weight: 600; color: #2563eb;">${record.applicationNo || 'N/A'}</td>
+                            <td>₹${parseFloat(record.amount || 0).toLocaleString()}</td>
+                            <td style="font-weight: 600; color: #059669;">₹${parseFloat(record.outstandingAmount || 0).toLocaleString()}</td>
+                            <td>₹${parseFloat(record.emi || 0).toLocaleString()}</td>
                             <td>${record.months || 'N/A'}</td>
                             <td>${record.disbursedDate}</td>
                             <td><span class="status-badge ${statusClass}">${record.status}</span></td>
-                            <td>${createdDate}</td>
+                            <td style="color: #64748b;">${createdDate}</td>
                         </tr>
                     `;
                 });
@@ -2313,6 +2374,8 @@ async function viewBorrowerHistory(empId) {
             if (viewModalBody) {
                 viewModalBody.innerHTML = content;
                 document.querySelector('#viewModal .modal-header h2').textContent = 'Borrowing History';
+                const modalContent = document.querySelector('#viewModal .modal-content');
+                if (modalContent) modalContent.classList.add('modal-wide');
                 openModal('viewModal');
             }
         } else {
@@ -2793,10 +2856,29 @@ function addRecord(type) {
  * Delete record confirmation
  * @param {string} type - Type of record (employee, borrower, voucher)
  * @param {string} id - ID of the record to delete
+ * @param {string} [empId] - Optional employee ID for voucher context
  */
-function deleteRecord(type, id) {
+function deleteRecord(type, id, empId = null) {
     currentDeleteType = type;
     currentDeleteId = id;
+    if (type === 'voucher') {
+        if (empId) {
+            currentDeleteEmpId = empId;
+        } else {
+            const v = data.vouchers && (data.vouchers[id] || Object.values(data.vouchers).find(item => item.auto_id == id || item.id == id));
+            currentDeleteEmpId = v ? v.empId : null;
+        }
+        const deleteMsg = document.querySelector('#deleteModal .modal-body p');
+        if (deleteMsg) {
+            deleteMsg.textContent = 'Are you sure you want to delete this voucher? This action cannot be undone.';
+        }
+    } else {
+        currentDeleteEmpId = null;
+        const deleteMsg = document.querySelector('#deleteModal .modal-body p');
+        if (deleteMsg) {
+            deleteMsg.textContent = 'Are you sure you want to delete this record? This action cannot be undone.';
+        }
+    }
     openModal('deleteModal');
 }
 
@@ -4140,6 +4222,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     formData.append('id', currentDeleteId); // Changed from empId to id
                 } else if (currentDeleteType === 'voucher') {
                     formData.append('auto_id', currentDeleteId);
+                    formData.append('id', currentDeleteId);
                 }
                 
                 // Send delete request to API
@@ -4163,7 +4246,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 .then(result => {
                     if (result.success) {
                         // Remove from local data
-                        delete data[currentDeleteType + 's'][currentDeleteId];
+                        if (data[currentDeleteType + 's']) {
+                            if (data[currentDeleteType + 's'][currentDeleteId]) {
+                                delete data[currentDeleteType + 's'][currentDeleteId];
+                            } else {
+                                for (const key in data[currentDeleteType + 's']) {
+                                    if (data[currentDeleteType + 's'][key].auto_id == currentDeleteId || data[currentDeleteType + 's'][key].id == currentDeleteId) {
+                                        delete data[currentDeleteType + 's'][key];
+                                        break;
+                                    }
+                                }
+                            }
+                        }
                         showNotification('Record deleted successfully!', 'success');
                         closeModal('deleteModal');
                         
@@ -4174,6 +4268,20 @@ document.addEventListener('DOMContentLoaded', function() {
                             renderBorrowerTable();
                         } else if (currentDeleteType === 'voucher') {
                             renderVoucherTable();
+                            // Reload borrowers data so updated outstanding amounts and statuses are reflected
+                            loadDataFromAPI('borrowers').then(() => {
+                                renderBorrowerTable();
+                                loadDashboardStats();
+                            });
+                            // If view modal was open for this employee's vouchers, update it or close it
+                            if (currentDeleteEmpId) {
+                                const remaining = Object.values(data.vouchers || {}).filter(v => v.empId === currentDeleteEmpId);
+                                if (remaining.length > 0) {
+                                    viewEmployeeVouchers(currentDeleteEmpId);
+                                } else {
+                                    closeModal('viewModal');
+                                }
+                            }
                         }
                         
                         // Refresh dashboard stats
@@ -4350,13 +4458,13 @@ function filterEmployeeTable(searchTerm) {
         
         html += `
             <tr>
-                <td style="font-weight: bold; background-color: #f8f9fa; color: #2196f3;">${employee.id}</td>
+                <td class="emp-id-cell">${employee.id}</td>
                 <td>${employee.name}</td>
                 <td>${entryDate}</td>
                 <td>
-                    <button class="view-btn" onclick="viewRecord('employee', '${employee.id}')">View</button>
-                    <button class="edit-btn" onclick="editRecord('employee', '${employee.id}')">Edit</button>
-                    <button class="delete-btn" onclick="deleteRecord('employee', '${employee.id}')">Delete</button>
+                    <button class="view-btn action-btn-icon" onclick="viewRecord('employee', '${employee.id}')" title="View">${ICON_EYE}</button>
+                    <button class="edit-btn action-btn-icon" onclick="editRecord('employee', '${employee.id}')" title="Edit">${ICON_EDIT}</button>
+                    <button class="delete-btn action-btn-icon" onclick="deleteRecord('employee', '${employee.id}')" title="Delete">${ICON_DELETE}</button>
                 </td>
             </tr>
         `;
@@ -4417,7 +4525,7 @@ function filterBorrowerTable(searchTerm) {
     console.log('Filtered borrowers count:', filteredBorrowers.length);
     
     if (filteredBorrowers.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; padding: 20px; color: #666;">No borrowers found matching your search.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 20px; color: #666;">No borrowers found matching your search.</td></tr>';
         return;
     }
     
@@ -4446,20 +4554,18 @@ function filterBorrowerTable(searchTerm) {
         
         html += `
             <tr class="${rowClass}">
-                <td>${borrower.applicationNo || 'N/A'}</td>
-                <td style="font-weight: bold; background-color: #f8f9fa; color: #2196f3;">${borrower.empId}</td>
+                <td class="emp-id-cell">${borrower.empId}</td>
                 <td>${borrower.name}</td>
                 <td>₹${(borrower.amount || 0).toLocaleString()}</td>
                 <td>₹${(borrower.outstandingAmount || borrower.amount || 0).toLocaleString()}</td>
                 <td>₹${(borrower.emi || 0).toLocaleString()}</td>
                 <td>${borrower.month || 'N/A'}</td>
                 <td>${convertDateFormat(borrower.disbursedDate)}</td>
-                <td>${entryDate}</td>
                 <td><span class="status ${statusClass}">${statusText}</span></td>
                 <td>
-                    <button class="view-btn" onclick="viewRecord('borrower', '${borrower.empId}')">View History</button>
-                    <button class="edit-btn ${editDisabled}" onclick="editRecord('borrower', '${borrower.id}')" ${editDisabled ? 'disabled title="Cannot edit completed records"' : ''}>Edit</button>
-                    <button class="delete-btn ${deleteDisabled}" onclick="deleteRecord('borrower', '${borrower.id}')" ${deleteDisabled ? 'disabled title="Cannot delete completed records"' : ''}>Delete</button>
+                    <button class="view-btn action-btn-icon" onclick="viewRecord('borrower', '${borrower.empId}')" title="View History">${ICON_EYE}</button>
+                    <button class="edit-btn action-btn-icon ${editDisabled}" onclick="editRecord('borrower', '${borrower.id}')" ${editDisabled ? 'disabled title="Cannot edit completed records"' : 'title="Edit"'}>${ICON_EDIT}</button>
+                    <button class="delete-btn action-btn-icon ${deleteDisabled}" onclick="deleteRecord('borrower', '${borrower.id}')" ${deleteDisabled ? 'disabled title="Cannot delete completed records"' : 'title="Delete"'}>${ICON_DELETE}</button>
                 </td>
             </tr>
         `;
@@ -4546,12 +4652,12 @@ function filterVoucherTable(searchTerm) {
     filteredEmployeeGroups.forEach(employee => {
         html += `
             <tr>
-                <td style="font-weight: bold; background-color: #f8f9fa; color: #2196f3;">${employee.empId}</td>
+                <td class="emp-id-cell">${employee.empId}</td>
                 <td>${employee.empName}</td>
                 <td><span class="voucher-count">${employee.vouchers.length}</span></td>
                 <td><span class="amount-total">₹${(employee.totalAmount || 0).toLocaleString()}</span></td>
                 <td>
-                    <button class="view-btn" onclick="viewEmployeeVouchers('${employee.empId}')">View Vouchers</button>
+                    <button class="view-btn action-btn-icon" onclick="viewEmployeeVouchers('${employee.empId}')" title="View Vouchers">${ICON_EYE}</button>
                 </td>
             </tr>
         `;

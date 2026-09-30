@@ -763,30 +763,38 @@ function exportTransactionHistory() {
             return 0;
         });
         
-        // Set headers for Excel download
-        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        header('Content-Disposition: attachment; filename="Transaction_History_' . date('Y-m-d') . '.xlsx"');
-        header('Cache-Control: max-age=0');
+        // Clear all output buffers to prevent corruption
+        while (ob_get_level()) {
+            ob_end_clean();
+        }
         
-        // Create Excel content
-        $excel_content = "Date\tTransaction Type\tEmployee ID\tEmployee Name\tAmount\tDescription\tReference\tStatus\tCreated At\n";
+        // Set headers for CSV download (fully supported by Excel)
+        header('Content-Type: text/csv; charset=UTF-8');
+        header('Content-Disposition: attachment; filename="Transaction_History_' . date('Y-m-d') . '.csv"');
+        header('Pragma: no-cache');
+        header('Expires: 0');
+        
+        $output = fopen('php://output', 'w');
+        // UTF-8 BOM for Microsoft Excel
+        fputs($output, "\xEF\xBB\xBF");
+        
+        fputcsv($output, ['Date', 'Transaction Type', 'Employee ID', 'Employee Name', 'Amount', 'Description', 'Reference', 'Status', 'Created At']);
         
         foreach ($transactions as $transaction) {
-            $excel_content .= implode("\t", [
+            fputcsv($output, [
                 $transaction['Date'],
                 $transaction['Transaction Type'],
                 $transaction['Employee ID'],
                 $transaction['Employee Name'],
-                number_format($transaction['Amount'], 2),
+                $transaction['Amount'],
                 $transaction['Description'],
                 $transaction['Reference'],
                 $transaction['Status'],
                 $transaction['Created At']
-            ]) . "\n";
+            ]);
         }
         
-        // Output the content
-        echo $excel_content;
+        fclose($output);
         exit;
         
     } catch (Exception $e) {
@@ -1270,23 +1278,98 @@ function deleteBorrower() {
 function deleteVoucher() {
     $pdo = getDB();
     
-    if (empty($_POST['auto_id'])) {
+    $autoId = !empty($_POST['auto_id']) ? intval($_POST['auto_id']) : null;
+    $id = !empty($_POST['id']) ? trim($_POST['id']) : null;
+    
+    if (empty($autoId) && empty($id)) {
         sendJsonResponse(false, 'Voucher ID is required');
         return;
     }
     
-    $autoId = intval($_POST['auto_id']);
-    
     try {
-        $stmt = $pdo->prepare("DELETE FROM advance_vouchers WHERE auto_id = ?");
-        $stmt->execute([$autoId]);
+        $pdo->beginTransaction();
         
-        if ($stmt->rowCount() > 0) {
-            sendJsonResponse(true, 'Voucher deleted successfully');
+        // Fetch voucher details before deleting
+        if ($autoId) {
+            $stmt = $pdo->prepare("SELECT * FROM advance_vouchers WHERE auto_id = ?");
+            $stmt->execute([$autoId]);
         } else {
-            sendJsonResponse(false, 'Voucher not found');
+            $stmt = $pdo->prepare("SELECT * FROM advance_vouchers WHERE id = ?");
+            $stmt->execute([$id]);
         }
+        $voucher = $stmt->fetch();
+        
+        if (!$voucher) {
+            $pdo->rollBack();
+            sendJsonResponse(false, 'Voucher not found');
+            return;
+        }
+        
+        $voucherAmount = floatval($voucher['amount']);
+        $applicationNo = !empty($voucher['application_no']) ? trim($voucher['application_no']) : null;
+        $empId = !empty($voucher['emp_id']) ? trim($voucher['emp_id']) : null;
+        $actualAutoId = $voucher['auto_id'];
+        
+        // Delete the voucher
+        $delStmt = $pdo->prepare("DELETE FROM advance_vouchers WHERE auto_id = ?");
+        $delStmt->execute([$actualAutoId]);
+        
+        $borrowerUpdated = false;
+        $newOutstanding = null;
+        $newStatus = null;
+        
+        // Update borrower's outstanding amount and status
+        if (!empty($applicationNo)) {
+            // Find borrower by application number
+            $bStmt = $pdo->prepare("SELECT id, amount, outstanding_amount, status FROM advance_borrowers WHERE application_no = ?");
+            $bStmt->execute([$applicationNo]);
+            $borrower = $bStmt->fetch();
+            
+            if ($borrower) {
+                // Calculate remaining total paid vouchers for this borrower after deletion
+                $paidStmt = $pdo->prepare("SELECT COALESCE(SUM(amount), 0) FROM advance_vouchers WHERE application_no = ?");
+                $paidStmt->execute([$applicationNo]);
+                $totalPaid = floatval($paidStmt->fetchColumn());
+                
+                $borrowerAmount = floatval($borrower['amount']);
+                $newOutstanding = max(0, $borrowerAmount - $totalPaid);
+                $newStatus = ($newOutstanding <= 0) ? 'completed' : 'active';
+                
+                $upStmt = $pdo->prepare("UPDATE advance_borrowers SET outstanding_amount = ?, status = ? WHERE id = ?");
+                $upStmt->execute([$newOutstanding, $newStatus, $borrower['id']]);
+                $borrowerUpdated = true;
+            }
+        }
+        
+        // Fallback: If not matched by application_no, look up by employee ID
+        if (!$borrowerUpdated && !empty($empId)) {
+            $bStmt = $pdo->prepare("SELECT TOP 1 id, amount, outstanding_amount, status FROM advance_borrowers WHERE emp_id = ? ORDER BY created_at DESC");
+            $bStmt->execute([$empId]);
+            $borrower = $bStmt->fetch();
+            
+            if ($borrower) {
+                $borrowerAmount = floatval($borrower['amount']);
+                $currentOutstanding = floatval($borrower['outstanding_amount']);
+                $newOutstanding = min($borrowerAmount, $currentOutstanding + $voucherAmount);
+                $newStatus = ($newOutstanding <= 0) ? 'completed' : 'active';
+                
+                $upStmt = $pdo->prepare("UPDATE advance_borrowers SET outstanding_amount = ?, status = ? WHERE id = ?");
+                $upStmt->execute([$newOutstanding, $newStatus, $borrower['id']]);
+                $borrowerUpdated = true;
+            }
+        }
+        
+        $pdo->commit();
+        
+        sendJsonResponse(true, 'Voucher deleted successfully and outstanding amount updated', [
+            'borrower_updated' => $borrowerUpdated,
+            'new_outstanding' => $newOutstanding,
+            'new_status' => $newStatus
+        ]);
     } catch(PDOException $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
         error_log("Delete voucher error: " . $e->getMessage());
         sendJsonResponse(false, 'Database error occurred');
     }

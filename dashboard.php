@@ -28,7 +28,7 @@ $currentUser = getCurrentUser();
         <div class="nav-content">
             <div class="logo-section">
                 <img src="tecumseh.png" alt="Tecumseh Logo" class="nav-logo">
-                <h2>Advance Portal</h2>
+                <h2>Advance Loan Management Portal</h2>
             </div>
             <div class="nav-actions">
                 <span class="user-welcome">Welcome, <?php echo htmlspecialchars($currentUser['name']); ?></span>
@@ -123,57 +123,57 @@ $currentUser = getCurrentUser();
                     </div>
                 </div>
 
-                <div class="table-container">
-                    <div class="stats-grid">
-                        <div class="stat-card">
-                            <div class="stat-icon">
-                                <svg width="24" height="24" fill="#6d87ea" viewBox="0 0 24 24">
-                                    <path d="M16 4c0-1.11.89-2 2-2s2 .89 2 2-.89 2-2 2-2-.89-2-2zm4 18v-6h2.5l-2.54-7.63A3.01 3.01 0 0 0 17.08 7H16.92c-1.34 0-2.54.88-2.88 2.19L11.5 16H14v6h6z"/>
-                                </svg>
-                            </div>
-                            <div class="stat-content">
-                                <h3 id="total-employees">3</h3>
-                                <p>Total Employees</p>
-                            </div>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <svg width="24" height="24" fill="#6d87ea" viewBox="0 0 24 24">
+                                <path d="M16 4c0-1.11.89-2 2-2s2 .89 2 2-.89 2-2 2-2-.89-2-2zm4 18v-6h2.5l-2.54-7.63A3.01 3.01 0 0 0 17.08 7H16.92c-1.34 0-2.54.88-2.88 2.19L11.5 16H14v6h6z"/>
+                            </svg>
                         </div>
-
-                        <div class="stat-card">
-                            <div class="stat-icon">
-                                <svg width="24" height="24" fill="#28a745" viewBox="0 0 24 24">
-                                    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-                                </svg>
-                            </div>
-                            <div class="stat-content">
-                                <h3 id="active-borrowers">0</h3>
-                                <p>Active Borrowers</p>
-                            </div>
-                        </div>
-
-                        <div class="stat-card">
-                            <div class="stat-icon">
-                                <svg width="24" height="24" fill="#ffc107" viewBox="0 0 24 24">
-                                    <path d="M21 5c-1.11-.35-2.33-.5-3.5-.5-1.95 0-4.05.4-5.5 1.5-1.45-1.1-3.55-1.5-5.5-1.5S2.45 4.9 1 6v14.65c0 .25.25.5.5.5.1 0 .15-.05.25-.05C3.1 20.45 5.05 20 6.5 20c1.95 0 4.05.4 5.5 1.5 1.35-.85 3.8-1.5 5.5-1.5 1.65 0 3.35.3 4.75 1.05.1.05.15.05.25.05.25 0 .5-.25.5-.5V6c-.6-.45-1.25-.75-2-1z"/>
-                                </svg>
-                            </div>
-                            <div class="stat-content">
-                                <h3 id="active-vouchers">0</h3>
-                                <p>Active Vouchers</p>
-                            </div>
-                        </div>
-
-                        <div class="stat-card">
-                            <div class="stat-icon">
-                                <svg width="24" height="24" fill="#dc3545" viewBox="0 0 24 24">
-                                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11H7v-2h10v2z"/>
-                                </svg>
-                            </div>
-                            <div class="stat-content">
-                                <h3 id="outstanding-amount">₹0</h3>
-                                <p>Outstanding Amount</p>
-                            </div>
+                        <div class="stat-content">
+                            <h3 id="total-employees">3</h3>
+                            <p>Total Employees</p>
                         </div>
                     </div>
 
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <svg width="24" height="24" fill="#28a745" viewBox="0 0 24 24">
+                                <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                            </svg>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="active-borrowers">0</h3>
+                            <p>Active Borrowers</p>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <svg width="24" height="24" fill="#ffc107" viewBox="0 0 24 24">
+                                <path d="M21 5c-1.11-.35-2.33-.5-3.5-.5-1.95 0-4.05.4-5.5 1.5-1.45-1.1-3.55-1.5-5.5-1.5S2.45 4.9 1 6v14.65c0 .25.25.5.5.5.1 0 .15-.05.25-.05C3.1 20.45 5.05 20 6.5 20c1.95 0 4.05.4 5.5 1.5 1.35-.85 3.8-1.5 5.5-1.5 1.65 0 3.35.3 4.75 1.05.1.05.15.05.25.05.25 0 .5-.25.5-.5V6c-.6-.45-1.25-.75-2-1z"/>
+                            </svg>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="active-vouchers">0</h3>
+                            <p>Active Vouchers</p>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <svg width="24" height="24" fill="#dc3545" viewBox="0 0 24 24">
+                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11H7v-2h10v2z"/>
+                            </svg>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="outstanding-amount">₹0</h3>
+                            <p>Outstanding Amount</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="table-container">
                     <table class="requests-table">
                         <thead>
                             <tr>
@@ -216,7 +216,7 @@ $currentUser = getCurrentUser();
                     <table class="requests-table">
                         <thead>
                             <tr>
-                                <th style="background-color: #e3f2fd; color: #1976d2; font-weight: bold;">Employee ID</th>
+                                <th>Employee ID</th>
                                 <th>Employee Name</th>
                                 <th>Entry Date</th>
                                 <th>Actions</th>
@@ -253,22 +253,20 @@ $currentUser = getCurrentUser();
                     <table class="requests-table">
                         <thead>
                             <tr>
-                                <th>Application No</th>
-                                <th style="background-color: #e3f2fd; color: #1976d2; font-weight: bold;">Employee ID</th>
+                                <th>Employee ID</th>
                                 <th>Name</th>
                                 <th>Advance Amount</th>
                                 <th>Outstanding Amount</th>
                                 <th>EMI</th>
                                 <th>Month</th>
                                 <th>Disbursed Date</th>
-                                <th>Entry Date</th>
                                 <th>Status</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr>
-                                <td colspan="11" style="text-align: center; padding: 20px; color: #666;">No borrowers found. Click "Add New Borrower" to get started.</td>
+                                <td colspan="9" style="text-align: center; padding: 20px; color: #666;">No borrowers found. Click "Add New Borrower" to get started.</td>
                             </tr>
                         </tbody>
                     </table>
@@ -297,7 +295,7 @@ $currentUser = getCurrentUser();
                     <table class="requests-table">
                         <thead>
                             <tr>
-                                <th style="background-color: #e3f2fd; color: #1976d2; font-weight: bold;">Employee ID</th>
+                                <th>Employee ID</th>
                                 <th>Employee Name</th>
                                 <th>Total Vouchers</th>
                                 <th>Total Amount</th>
@@ -446,8 +444,8 @@ $currentUser = getCurrentUser();
                                 <td>Never</td>
                                 <td><span class="status status-pending">Ready</span></td>
                                 <td>
-                                    <button class="view-btn" onclick="generateReport(0)">Generate</button>
-                                    <button class="edit-btn" onclick="previewReport('summary')">Preview</button>
+                                    <button class="view-btn action-btn-icon" onclick="previewReport('summary')" title="Preview Report"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg></button>
+                                    <button class="export-btn action-btn-icon" onclick="generateReport(0)" title="Export Report"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg></button>
                                 </td>
                             </tr>
                             <tr>
@@ -457,8 +455,8 @@ $currentUser = getCurrentUser();
                                 <td>Never</td>
                                 <td><span class="status status-pending">Ready</span></td>
                                 <td>
-                                    <button class="view-btn" onclick="generateReport(1)">Generate</button>
-                                    <button class="edit-btn" onclick="previewReport('employee')">Preview</button>
+                                    <button class="view-btn action-btn-icon" onclick="previewReport('employee')" title="Preview Report"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg></button>
+                                    <button class="export-btn action-btn-icon" onclick="generateReport(1)" title="Export Report"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg></button>
                                 </td>
                             </tr>
                             <tr>
@@ -468,8 +466,8 @@ $currentUser = getCurrentUser();
                                 <td>Never</td>
                                 <td><span class="status status-pending">Ready</span></td>
                                 <td>
-                                    <button class="view-btn" onclick="generateReport(2)">Generate</button>
-                                    <button class="edit-btn" onclick="previewReport('department')">Preview</button>
+                                    <button class="view-btn action-btn-icon" onclick="previewReport('department')" title="Preview Report"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg></button>
+                                    <button class="export-btn action-btn-icon" onclick="generateReport(2)" title="Export Report"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg></button>
                                 </td>
                             </tr>
                             <tr>
@@ -479,8 +477,8 @@ $currentUser = getCurrentUser();
                                 <td>Never</td>
                                 <td><span class="status status-pending">Ready</span></td>
                                 <td>
-                                    <button class="view-btn" onclick="generateReport(3)">Generate</button>
-                                    <button class="edit-btn" onclick="previewReport('outstanding')">Preview</button>
+                                    <button class="view-btn action-btn-icon" onclick="previewReport('outstanding')" title="Preview Report"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg></button>
+                                    <button class="export-btn action-btn-icon" onclick="generateReport(3)" title="Export Report"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg></button>
                                 </td>
                             </tr>
                             <tr>
@@ -490,8 +488,8 @@ $currentUser = getCurrentUser();
                                 <td>Never</td>
                                 <td><span class="status status-pending">Ready</span></td>
                                 <td>
-                                    <button class="view-btn" onclick="generateReport(4)">Generate</button>
-                                    <button class="edit-btn" onclick="previewReport('voucher')">Preview</button>
+                                    <button class="view-btn action-btn-icon" onclick="previewReport('voucher')" title="Preview Report"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg></button>
+                                    <button class="export-btn action-btn-icon" onclick="generateReport(4)" title="Export Report"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg></button>
                                 </td>
                             </tr>
                             <tr>
@@ -501,8 +499,8 @@ $currentUser = getCurrentUser();
                                 <td>Live Data</td>
                                 <td><span class="status status-warning" id="failed-data-status">No Errors</span></td>
                                 <td>
-                                    <button class="view-btn" onclick="viewFailedData()">View Failed Data</button>
-                                    <button class="delete-btn" onclick="clearFailedData()">Clear Failed Data</button>
+                                    <button class="view-btn action-btn-icon" onclick="viewFailedData()" title="View Failed Data"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg></button>
+                                    <button class="delete-btn action-btn-icon" onclick="clearFailedData()" title="Clear Failed Data"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg></button>
                                 </td>
                             </tr>
                         </tbody>
